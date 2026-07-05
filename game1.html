@@ -605,7 +605,7 @@
         <li>제한시간 <b>1분</b> 동안 최대한 많이 잡아보세요.</li>
       </ul>
       <div class="leaderboard" id="lbStart">
-        <h3>🏆 파리 잡기 랭킹 TOP 5</h3>
+        <h3>🏆 파리 잡기 랭킹 TOP 20</h3>
         <ol id="lbStartList"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
       <button id="startBtn" class="big-btn">▶ 시작하기</button>
@@ -699,7 +699,7 @@
       <a id="downloadBtn" class="big-btn download-btn hidden" download="파리잡기_결과.png">📥 이미지 저장하기</a>
 
       <div class="leaderboard" id="lbResult">
-        <h3>🏆 파리 잡기 랭킹 TOP 5</h3>
+        <h3>🏆 파리 잡기 랭킹 TOP 20</h3>
         <ol id="lbResultList"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
 
@@ -1076,7 +1076,12 @@
   function renderLeaderboard(listEl){
     if(!listEl) return;
     listEl.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
-    fetchTopScores('fly', 5).then(rows=>{
+    fetchTopScores('fly', 20).then(result=>{
+      if(!result || !result.ok){
+        listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
+        return;
+      }
+      const rows = result.rows;
       if(!rows || rows.length === 0){
         listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
         return;
