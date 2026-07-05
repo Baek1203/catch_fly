@@ -31,10 +31,8 @@
    -----------------------------------------------------------
 
    ▶ 인덱스 안내
-   game별로 필터(where) + 점수 정렬(orderBy)을 함께 사용하기 때문에
-   Firestore가 "복합 색인이 필요합니다"라는 에러와 함께 생성 링크를
-   콘솔에 출력할 수 있어요. 그 링크를 한 번 클릭해 색인을 만들어주면
-   이후에는 정상적으로 랭킹이 조회됩니다.
+   랭킹 조회는 색인(인덱스) 없이도 바로 동작하도록 구현했습니다.
+   (game 필드로만 필터링한 뒤, 점수 정렬은 브라우저에서 처리합니다.)
    ========================================================= */
 
 const firebaseConfig = {
@@ -94,18 +92,28 @@ async function saveScore(gameId, name, score, extra = {}) {
   }
 }
 
-/* ---------------- 랭킹(top N) 조회 ---------------- */
-async function fetchTopScores(gameId, limitN = 5) {
-  if (!firebaseReady) return [];
+/* ---------------- 랭킹(top N) 조회 ----------------
+   where(game==...) + orderBy(score desc) 조합은 Firestore에서
+   "복합 색인"을 요구할 수 있어, 색인을 미리 만들어두지 않으면
+   조회가 조용히 실패해서 랭킹이 안 보이는 문제가 생길 수 있습니다.
+   이를 피하기 위해 orderBy 없이 game으로만 필터링해서 가져온 뒤
+   점수 정렬은 브라우저(클라이언트)에서 처리합니다.
+   -> 이 방식은 별도의 색인 생성 없이 바로 동작합니다.
+   반환값: { ok: boolean, rows: 배열, reason?: 실패 사유 }
+---------------------------------------------------- */
+async function fetchTopScores(gameId, limitN = 20) {
+  if (!firebaseReady) {
+    return { ok: false, rows: [], reason: 'firebase-not-configured' };
+  }
   try {
     const snap = await db.collection('scores')
       .where('game', '==', gameId)
-      .orderBy('score', 'desc')
-      .limit(limitN)
       .get();
-    return snap.docs.map(d => d.data());
+    const rows = snap.docs.map(d => d.data());
+    rows.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+    return { ok: true, rows: rows.slice(0, limitN) };
   } catch (e) {
     console.error('[firebase-shared.js] 랭킹 조회 실패:', e);
-    return [];
+    return { ok: false, rows: [], reason: e.message };
   }
 }
