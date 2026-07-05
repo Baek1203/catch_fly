@@ -1,0 +1,1153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>파리 잡기 좌표게임</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root{
+    --wood-1:#7a5334;
+    --wood-2:#4d3320;
+    --board-bg:#1e332a;
+    --board-bg-2:#152720;
+    --chalk-white:#f5f2e6;
+    --chalk-yellow:#f2c94c;
+    --chalk-orange:#ff8c5a;
+    --chalk-blue:#8fc7e8;
+    --chalk-pink:#ff7aa2;
+    --grid-line: rgba(245,242,230,0.14);
+    --grid-line-strong: rgba(245,242,230,0.5);
+  }
+
+  *{ box-sizing: border-box; }
+
+  body{
+    margin:0;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background: radial-gradient(ellipse at 50% -10%, #2b2016, #14100b 70%);
+    font-family:'Noto Sans KR', sans-serif;
+    padding: 24px 12px;
+  }
+
+  .mono{ font-family:'JetBrains Mono', monospace; }
+  .hidden{ display:none !important; }
+
+  .frame{
+    width: 100%;
+    max-width: 460px;
+    transition: max-width 0.3s ease;
+  }
+
+  .board{
+    position:relative;
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.03), transparent 40%),
+      radial-gradient(ellipse at 70% 80%, rgba(255,255,255,0.03), transparent 45%),
+      linear-gradient(180deg, var(--board-bg), var(--board-bg-2));
+    border-radius: 10px;
+    padding: 22px 20px 18px;
+    border: 14px solid var(--wood-1);
+    border-image: linear-gradient(160deg, var(--wood-1), var(--wood-2) 60%, var(--wood-1)) 1;
+    box-shadow:
+      0 18px 40px rgba(0,0,0,0.55),
+      inset 0 0 40px rgba(0,0,0,0.35);
+  }
+
+  header{ text-align:center; margin-bottom: 14px; }
+
+  h1{
+    font-family:'Gaegu', sans-serif;
+    font-weight: 700;
+    color: var(--chalk-white);
+    font-size: 30px;
+    margin: 0 0 6px;
+    text-shadow: 0 0 6px rgba(245,242,230,0.25);
+    letter-spacing: 0.5px;
+  }
+
+  .subtitle{
+    font-family:'Gaegu', sans-serif;
+    color: var(--chalk-blue);
+    font-size: 15px;
+    margin: 0;
+    opacity: 0.9;
+  }
+
+  /* ---------- Start / Result screens ---------- */
+  .info-screen{
+    text-align:center;
+    padding: 10px 4px 4px;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  .info-screen .fly-hero{
+    font-size: 54px;
+    margin: 6px 0 14px;
+    filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+  }
+
+  .rules{
+    text-align:left;
+    list-style:none;
+    padding:0;
+    margin: 0 0 20px;
+    font-family:'Gaegu', sans-serif;
+    color: var(--chalk-white);
+    font-size: 16px;
+    background: rgba(245,242,230,0.06);
+    border: 1px dashed rgba(245,242,230,0.25);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .rules li{ margin-bottom: 8px; line-height:1.4; }
+  .rules li:last-child{ margin-bottom:0; }
+  .rules li b{ color: var(--chalk-yellow); }
+
+  .big-btn{
+    display:block;
+    width:100%;
+    padding: 16px;
+    font-family:'Gaegu', sans-serif;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--board-bg-2);
+    background: var(--chalk-yellow);
+    border: none;
+    border-radius: 8px;
+    cursor:pointer;
+    box-shadow: 0 4px 0 #b6912a, 0 6px 10px rgba(0,0,0,0.4);
+    transition: transform 0.08s ease;
+    text-align: center;
+    text-decoration: none;
+  }
+  .big-btn:active{ transform: translateY(3px); box-shadow: 0 1px 0 #b6912a; }
+
+  .result-title{
+    font-family:'Gaegu', sans-serif;
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--chalk-orange);
+    margin: 4px 0 18px;
+  }
+
+  .result-stats{
+    display:flex;
+    justify-content:center;
+    gap: 10px;
+    margin-bottom: 4px;
+  }
+  .result-stats .stat{ flex:1; }
+
+  .result-card{
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.04), transparent 40%),
+      linear-gradient(180deg, var(--board-bg), var(--board-bg-2));
+    border: 2px dashed rgba(245,242,230,0.25);
+    border-radius: 10px;
+    padding: 18px 14px 16px;
+    margin-bottom: 16px;
+  }
+
+  #resultName{
+    display:block;
+    font-family:'Gaegu', sans-serif;
+    font-size: 18px;
+    color: var(--chalk-blue);
+    margin: -8px 0 10px;
+  }
+
+  .result-footer{
+    font-family:'Gaegu', sans-serif;
+    font-size: 12px;
+    color: var(--chalk-white);
+    opacity: 0.5;
+    margin: 14px 0 0;
+  }
+
+  .name-field{
+    text-align:left;
+    margin-bottom: 18px;
+  }
+  .name-field label{
+    display:block;
+    font-family:'Gaegu', sans-serif;
+    font-size: 14px;
+    color: var(--chalk-blue);
+    margin-bottom: 4px;
+  }
+  .name-field input{
+    width:100%;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed rgba(245,242,230,0.4);
+    color: var(--chalk-white);
+    font-family:'Gaegu', sans-serif;
+    font-size: 17px;
+    padding: 4px 2px;
+    outline:none;
+  }
+  .name-field input::placeholder{ color: rgba(245,242,230,0.35); }
+
+  .secondary-btn{
+    background: transparent;
+    color: var(--chalk-blue);
+    border: 1px solid rgba(143,199,232,0.5);
+    box-shadow:none;
+    margin-bottom: 10px;
+  }
+  .secondary-btn:active{ transform: translateY(2px); }
+  .secondary-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  /* 다운로드 버튼 추가 스타일 */
+  .download-btn {
+    background: var(--chalk-blue);
+    color: var(--board-bg-2);
+    box-shadow: 0 4px 0 #6ba4c4, 0 6px 10px rgba(0,0,0,0.4);
+    margin-bottom: 14px;
+  }
+  .download-btn:active {
+    box-shadow: 0 1px 0 #6ba4c4;
+  }
+
+  .capture-msg{
+    font-family:'Gaegu', sans-serif;
+    font-size: 14px;
+    color: var(--chalk-white);
+    min-height: 18px;
+    margin: 0 0 10px;
+  }
+
+  /* ---------- Game screen ---------- */
+  .stats{
+    display:flex;
+    justify-content:center;
+    gap: 10px;
+    margin: 14px 0 12px;
+  }
+
+  .stat{
+    flex:1;
+    max-width: 130px;
+    text-align:center;
+    background: rgba(245,242,230,0.06);
+    border: 1px dashed rgba(245,242,230,0.25);
+    border-radius: 8px;
+    padding: 8px 4px;
+  }
+
+  .stat-label{
+    display:block;
+    font-family:'Gaegu', sans-serif;
+    font-size: 13px;
+    color: var(--chalk-white);
+    opacity: 0.7;
+  }
+
+  .stat-value{
+    display:block;
+    font-family:'JetBrains Mono', monospace;
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--chalk-yellow);
+    margin-top: 2px;
+  }
+
+  .stat-value.timer-low{ color: var(--chalk-pink); }
+
+  .board-wrap{
+    background: rgba(0,0,0,0.15);
+    border-radius: 8px;
+    padding: 6px;
+    margin-bottom: 10px;
+  }
+
+  svg#plane{ width:100%; height:auto; display:block; }
+
+  .fly-emoji{
+    font-size: 22px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    filter: drop-shadow(0 2px 3px rgba(0,0,0,0.5));
+  }
+
+  .fly-emoji.flee{
+    animation: flyFlee 0.45s ease forwards;
+  }
+  .fly-emoji.enter{
+    animation: flyEnter 0.35s ease forwards;
+  }
+  .fly-emoji.squish{
+    animation: flySquish 0.38s cubic-bezier(.4,0,.2,1) forwards;
+  }
+
+  @keyframes flyFlee{
+    0%{ transform: translate(0,0) scale(1); opacity:1; }
+    100%{ transform: translate(var(--fdx), var(--fdy)) scale(0.4); opacity:0; }
+  }
+  @keyframes flyEnter{
+    0%{ transform: scale(0.2); opacity:0; }
+    100%{ transform: scale(1); opacity:1; }
+  }
+  @keyframes flySquish{
+    0%{ transform: scale(1,1) rotate(0deg); opacity:1; }
+    25%{ transform: scale(1.6,0.35) rotate(-10deg); opacity:1; }
+    55%{ transform: scale(1.5,0.4) rotate(8deg); opacity:1; }
+    100%{ transform: scale(0.2,0.2) rotate(14deg); opacity:0; }
+  }
+
+  .board-wrap.impact-shake{
+    animation: boardShake 0.32s ease;
+  }
+  @keyframes boardShake{
+    0%,100%{ transform: translate(0,0); }
+    20%{ transform: translate(-4px,3px); }
+    40%{ transform: translate(4px,-3px); }
+    60%{ transform: translate(-3px,-2px); }
+    80%{ transform: translate(3px,2px); }
+  }
+
+  .impact-flash{ opacity:0; }
+  .impact-flash.go{ animation: impactFlashGo 0.35s ease forwards; }
+  @keyframes impactFlashGo{
+    0%{ opacity:0.9; transform: scale(0.3); }
+    100%{ opacity:0; transform: scale(2.4); }
+  }
+
+  .score-popup{ opacity:0; }
+  .score-popup.go{ animation: scorePop 0.8s ease forwards; }
+  @keyframes scorePop{
+    0%{ opacity:0; transform: translateY(0) scale(0.6); }
+    20%{ opacity:1; transform: translateY(-6px) scale(1.2); }
+    100%{ opacity:0; transform: translateY(-40px) scale(1); }
+  }
+
+  .paddle-emoji{
+    font-size: 40px;
+    text-anchor: middle;
+    dominant-baseline: central;
+    opacity: 0;
+    pointer-events: none;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+  }
+
+  .paddle-emoji.hit{ animation: paddleHit 0.5s ease forwards; }
+  .paddle-emoji.miss{ animation: paddleMiss 0.5s ease forwards; }
+
+  @keyframes paddleHit{
+    0%{ transform: translateY(-70px) rotate(-35deg); opacity:0; }
+    45%{ transform: translateY(0px) rotate(8deg); opacity:1; }
+    65%{ transform: translateY(4px) rotate(14deg); opacity:1; }
+    100%{ transform: translateY(-10px) rotate(-5deg); opacity:0; }
+  }
+
+  @keyframes paddleMiss{
+    0%{ transform: translateY(-70px) translateX(-25px) rotate(-35deg); opacity:0; }
+    45%{ transform: translateY(-5px) translateX(15px) rotate(20deg); opacity:1; }
+    100%{ transform: translateY(-15px) translateX(30px) rotate(30deg); opacity:0; }
+  }
+
+  .splat-particle{ opacity: 0; }
+  .splat-particle.go{ animation: splatGo 0.7s ease forwards; }
+  @keyframes splatGo{
+    0%{ opacity:1; transform: translate(0,0) scale(1); }
+    100%{ opacity:0; transform: translate(var(--dx), var(--dy)) scale(0.3); }
+  }
+
+  .guess-line{ stroke: var(--chalk-blue); stroke-width: 1.4; opacity: 0.85; stroke-dasharray: 4 3; }
+  .guess-dot{ fill: var(--chalk-blue); opacity: 0.9; }
+
+  .coord-readout{
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    gap: 8px;
+    margin-bottom: 14px;
+    font-family:'Gaegu', sans-serif;
+    color: var(--chalk-white);
+    font-size: 16px;
+  }
+  #coordText{
+    color: var(--chalk-yellow);
+    font-size: 17px;
+    font-weight:600;
+  }
+
+  .sliders{ margin-bottom: 16px; }
+
+  .slider-row{
+    display:flex;
+    align-items:center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .slider-row label{
+    font-family:'Gaegu', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--chalk-orange);
+    width: 18px;
+    text-align:center;
+  }
+
+  .slider-row input[type="range"]{
+    flex:1;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(245,242,230,0.25);
+    outline: none;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--chalk-blue);
+    border: 2px solid var(--chalk-white);
+    cursor:pointer;
+    box-shadow: 0 0 6px rgba(143,199,232,0.7);
+  }
+  .slider-row input[type="range"]::-moz-range-thumb{
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--chalk-blue);
+    border: 2px solid var(--chalk-white);
+    cursor:pointer;
+  }
+
+  .slider-row input[type="range"]:disabled::-webkit-slider-thumb{ background: #777; }
+  .slider-row input[type="range"]:disabled{ opacity: 0.5; }
+
+  .slider-val{
+    width: 36px;
+    text-align:center;
+    color: var(--chalk-white);
+    font-size: 15px;
+  }
+
+  .swat-btn{
+    display:block;
+    width:100%;
+    padding: 14px;
+    font-family:'Gaegu', sans-serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--board-bg-2);
+    background: var(--chalk-yellow);
+    border: none;
+    border-radius: 8px;
+    cursor:pointer;
+    box-shadow: 0 4px 0 #b6912a, 0 6px 10px rgba(0,0,0,0.4);
+    transition: transform 0.08s ease;
+  }
+  .swat-btn:active{ transform: translateY(3px); box-shadow: 0 1px 0 #b6912a; }
+  .swat-btn:disabled{
+    background: #777; color:#ccc; cursor:not-allowed;
+    box-shadow: 0 4px 0 #555, 0 6px 10px rgba(0,0,0,0.4);
+  }
+
+  .skip-btn{
+    display:block;
+    width:100%;
+    margin-top: 10px;
+    padding: 8px;
+    font-family:'Gaegu', sans-serif;
+    font-size: 14px;
+    color: var(--chalk-white);
+    background: transparent;
+    border: 1px dashed rgba(245,242,230,0.35);
+    border-radius: 8px;
+    cursor:pointer;
+    opacity: 0.75;
+  }
+  .skip-btn:hover{ opacity: 1; }
+  .skip-btn:disabled{ opacity: 0.3; cursor:not-allowed; }
+
+  .toast{
+    text-align:center;
+    min-height: 22px;
+    margin: 12px 0 0;
+    font-family:'Gaegu', sans-serif;
+    font-size: 16px;
+    color: var(--chalk-white);
+  }
+  .toast.hit{ color: var(--chalk-orange); }
+  .toast.miss{ color: var(--chalk-pink); }
+
+  .ledge{
+    height: 14px;
+    margin: 0 8px;
+    background: linear-gradient(180deg, var(--wood-2), #2c1c10);
+    border-radius: 0 0 6px 6px;
+    box-shadow: 0 6px 10px rgba(0,0,0,0.5);
+  }
+
+  @media (max-width: 380px){
+    h1{ font-size: 24px; }
+    .stat-value{ font-size: 17px; }
+  }
+
+  /* ---------- Desktop / Mobile Layout Magic ---------- */
+  .game-layout {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .gl-right { display: contents; }
+  
+  .stats { order: 1; width: 100%; }
+  .gl-board { order: 2; width: 100%; }
+  .coord-readout { order: 3; }
+  .sliders { order: 4; }
+  .swat-btn { order: 5; }
+  .skip-btn { order: 6; }
+  .toast { order: 7; }
+
+  @media (min-width: 768px) {
+    .frame { max-width: 1060px; } /* 데스크톱에서 전체 프레임을 더 크게 확장 */
+    .info-screen { max-width: 500px; margin: 0 auto; }
+    
+    .game-layout {
+      flex-direction: row;
+      align-items: center;
+      gap: 40px;
+    }
+    
+    .gl-right {
+      display: flex;
+      flex-direction: column;
+      flex: 1; /* 우측 대시보드 비율 */
+    }
+    
+    .gl-board {
+      flex: 1.7; /* 좌측 좌표평면 비율을 더 키움 */
+      order: 0; /* Left side */
+      margin-bottom: 0;
+    }
+    
+    .stats { margin-top: 0; margin-bottom: 24px; }
+    
+    h1 { font-size: 38px; }
+    .subtitle { font-size: 18px; margin-bottom: 10px; }
+    .stat-value { font-size: 28px; margin-top: 6px; }
+    .stat-label { font-size: 15px; }
+    .coord-readout { font-size: 20px; margin-bottom: 24px; }
+    #coordText { font-size: 24px; }
+    
+    .swat-btn { font-size: 26px; padding: 18px; }
+    .skip-btn { font-size: 16px; padding: 12px; margin-top: 14px; }
+    .slider-row label { font-size: 24px; }
+    .slider-val { font-size: 18px; }
+    .sliders { margin-bottom: 30px; }
+  }
+
+  /* ---------- 메인으로 돌아가기 / 랭킹 ---------- */
+  .back-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    max-width: 460px; margin: 0 auto 10px; padding: 0 2px;
+  }
+  .back-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:'Gaegu', sans-serif; font-size:15px; font-weight:700;
+    color: var(--chalk-white); background: rgba(245,242,230,0.08);
+    border: 1px solid rgba(245,242,230,0.3); border-radius: 999px;
+    padding: 7px 14px; cursor:pointer; text-decoration:none;
+  }
+  .back-btn:hover{ background: rgba(245,242,230,0.16); }
+  .player-badge{
+    font-family:'Gaegu', sans-serif; font-size:14px; color: var(--chalk-blue);
+  }
+  .leaderboard{
+    text-align:left; margin: 16px 0 4px; background: rgba(245,242,230,0.06);
+    border: 1px dashed rgba(245,242,230,0.25); border-radius: 8px; padding: 12px 14px;
+  }
+  .leaderboard h3{
+    font-family:'Gaegu', sans-serif; font-size:16px; color: var(--chalk-yellow);
+    margin: 0 0 8px; text-align:center;
+  }
+  .leaderboard ol{ list-style:none; margin:0; padding:0; font-family:'Gaegu', sans-serif; font-size:14px; color: var(--chalk-white); }
+  .leaderboard li{ display:flex; justify-content:space-between; padding: 4px 2px; border-bottom: 1px dashed rgba(245,242,230,0.15); }
+  .leaderboard li:last-child{ border-bottom:none; }
+  .leaderboard .rank{ color: var(--chalk-orange); font-weight:700; width:26px; }
+  .leaderboard .lb-name{ flex:1; text-align:left; padding-left:6px; }
+  .leaderboard .lb-score{ font-family:'JetBrains Mono', monospace; color: var(--chalk-yellow); }
+  .leaderboard .lb-empty{ text-align:center; opacity:0.6; font-size:13px; padding: 6px 0; }
+</style>
+</head>
+<body>
+<div class="back-bar">
+  <a href="index.html" class="back-btn">⬅ 게임 선택으로</a>
+  <span class="player-badge" id="playerBadge"></span>
+</div>
+<div class="frame">
+  <div class="board">
+
+    <!-- ===== 시작 화면 ===== -->
+    <div id="startScreen" class="info-screen">
+      <header>
+        <h1>🪰 파리 잡기 좌표게임</h1>
+        <p class="subtitle">칠판 위 좌표평면에서 파리를 찾아라!</p>
+      </header>
+      <div class="fly-hero">🪰🏏</div>
+      <ul class="rules">
+        <li>파리가 좌표평면 위 임의의 정수 좌표에 앉아있어요.</li>
+        <li><b>X, Y 슬라이더</b>로 파란 조준점을 파리 위치에 정확히 맞추세요.</li>
+        <li>조준이 맞으면 <b>찰싹 때리기</b>로 파리를 잡고 점수 획득!</li>
+        <li>잘못 휘두르면 파리가 <b>다른 자리로 도망가요.</b></li>
+        <li>제한시간 <b>1분</b> 동안 최대한 많이 잡아보세요.</li>
+      </ul>
+      <div class="leaderboard" id="lbStart">
+        <h3>🏆 파리 잡기 랭킹 TOP 5</h3>
+        <ol id="lbStartList"><li class="lb-empty">불러오는 중...</li></ol>
+      </div>
+      <button id="startBtn" class="big-btn">▶ 시작하기</button>
+    </div>
+
+    <!-- ===== 게임 화면 ===== -->
+    <div id="gameScreen" class="hidden game-layout">
+      <div class="board-wrap gl-board">
+        <svg id="plane" viewBox="0 0 440 440" xmlns="http://www.w3.org/2000/svg">
+          <g id="gridLines"></g>
+          <g id="axisLines"></g>
+          <g id="tickLabels"></g>
+          <g id="guessMarker"></g>
+          <g id="splatLayer"></g>
+          <text id="flyEl" class="fly-emoji">🪰</text>
+          <text id="paddleEl" class="paddle-emoji">🏏</text>
+        </svg>
+      </div>
+
+      <div class="gl-right">
+        <div class="stats">
+          <div class="stat">
+            <span class="stat-label">점수</span>
+            <span class="stat-value" id="scoreVal">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">연속</span>
+            <span class="stat-value" id="streakVal">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">남은시간</span>
+            <span class="stat-value" id="timeVal">1:00</span>
+          </div>
+        </div>
+
+        <div class="coord-readout">
+          <span>조준 좌표</span>
+          <span id="coordText" class="mono">( 0 , 0 )</span>
+        </div>
+
+        <div class="sliders">
+          <div class="slider-row">
+            <label for="sliderX">X</label>
+            <input type="range" id="sliderX" min="-10" max="10" step="1" value="0">
+            <span class="mono slider-val" id="xVal">0</span>
+          </div>
+          <div class="slider-row">
+            <label for="sliderY">Y</label>
+            <input type="range" id="sliderY" min="-10" max="10" step="1" value="0">
+            <span class="mono slider-val" id="yVal">0</span>
+          </div>
+        </div>
+
+        <button id="swatBtn" class="swat-btn">🏏 찰싹 때리기</button>
+        <button id="skipBtn" class="skip-btn">🔄 다른 파리 부르기</button>
+
+        <p id="toast" class="toast"></p>
+      </div>
+    </div>
+
+    <!-- ===== 결과 화면 ===== -->
+    <div id="resultScreen" class="info-screen hidden">
+      <div id="resultCard" class="result-card">
+        <header>
+          <h1>⏰ 시간 종료!</h1>
+        </header>
+        <div class="fly-hero" id="resultEmoji">🎉</div>
+        <span id="resultName" class="hidden"></span>
+        <p class="result-title" id="resultHeadline">수고하셨어요!</p>
+        <div class="result-stats">
+          <div class="stat">
+            <span class="stat-label">잡은 파리</span>
+            <span class="stat-value" id="resultScore">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">최고 연속</span>
+            <span class="stat-value" id="resultStreak">0</span>
+          </div>
+          <div class="stat">
+            <span class="stat-label">명중률</span>
+            <span class="stat-value" id="resultAcc">-</span>
+          </div>
+        </div>
+        <p class="result-footer">🪰 파리 잡기 좌표게임</p>
+      </div>
+
+      <button id="captureBtn" class="big-btn secondary-btn">📋 결과 캡처하기</button>
+      <p id="captureMsg" class="capture-msg"></p>
+      
+      <!-- 다운로드 버튼 (미리보기 이미지 영역은 제거) -->
+      <a id="downloadBtn" class="big-btn download-btn hidden" download="파리잡기_결과.png">📥 이미지 저장하기</a>
+
+      <div class="leaderboard" id="lbResult">
+        <h3>🏆 파리 잡기 랭킹 TOP 5</h3>
+        <ol id="lbResultList"><li class="lb-empty">불러오는 중...</li></ol>
+      </div>
+
+      <button id="retryBtn" class="big-btn">🔁 다시 하기</button>
+    </div>
+
+  </div>
+  <div class="ledge"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-shared.js"></script>
+<script>
+(function(){
+  const RANGE = 10;
+  const UNIT = 20;
+  const ORIGIN = 220;
+  const GAME_SECONDS = 60;
+
+  const svgNS = "http://www.w3.org/2000/svg";
+  const gridLines = document.getElementById('gridLines');
+  const axisLines = document.getElementById('axisLines');
+  const tickLabels = document.getElementById('tickLabels');
+  const guessMarker = document.getElementById('guessMarker');
+  const splatLayer = document.getElementById('splatLayer');
+  const flyEl = document.getElementById('flyEl');
+  const paddleEl = document.getElementById('paddleEl');
+
+  const sliderX = document.getElementById('sliderX');
+  const sliderY = document.getElementById('sliderY');
+  const xVal = document.getElementById('xVal');
+  const yVal = document.getElementById('yVal');
+  const coordText = document.getElementById('coordText');
+  const swatBtn = document.getElementById('swatBtn');
+  const skipBtn = document.getElementById('skipBtn');
+  const toast = document.getElementById('toast');
+
+  const scoreVal = document.getElementById('scoreVal');
+  const streakVal = document.getElementById('streakVal');
+  const timeVal = document.getElementById('timeVal');
+
+  const startScreen = document.getElementById('startScreen');
+  const gameScreen = document.getElementById('gameScreen');
+  const resultScreen = document.getElementById('resultScreen');
+  const startBtn = document.getElementById('startBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const resultScore = document.getElementById('resultScore');
+  const resultStreak = document.getElementById('resultStreak');
+  const resultAcc = document.getElementById('resultAcc');
+  const resultHeadline = document.getElementById('resultHeadline');
+  const resultEmoji = document.getElementById('resultEmoji');
+  const resultName = document.getElementById('resultName');
+  const resultCard = document.getElementById('resultCard');
+  const playerBadge = document.getElementById('playerBadge');
+  const lbStartList = document.getElementById('lbStartList');
+  const lbResultList = document.getElementById('lbResultList');
+  const captureBtn = document.getElementById('captureBtn');
+  const captureMsg = document.getElementById('captureMsg');
+  const downloadBtn = document.getElementById('downloadBtn');
+  const boardWrap = document.querySelector('.board-wrap');
+
+  // x는 오른쪽으로 갈수록 증가, y는 위로 갈수록 증가 (표준 좌표평면)
+  function toX(v){ return ORIGIN + v * UNIT; }
+  function toY(v){ return ORIGIN - v * UNIT; }
+
+  // ---- 격자 그리기 ----
+  for(let i=-RANGE; i<=RANGE; i++){
+    const v = document.createElementNS(svgNS,'line');
+    v.setAttribute('x1', toX(i)); v.setAttribute('x2', toX(i));
+    v.setAttribute('y1', toY(-RANGE)); v.setAttribute('y2', toY(RANGE));
+    v.setAttribute('stroke', 'var(--grid-line)');
+    v.setAttribute('stroke-width', '1');
+    gridLines.appendChild(v);
+
+    const h = document.createElementNS(svgNS,'line');
+    h.setAttribute('y1', toY(i)); h.setAttribute('y2', toY(i));
+    h.setAttribute('x1', toX(-RANGE)); h.setAttribute('x2', toX(RANGE));
+    h.setAttribute('stroke', 'var(--grid-line)');
+    h.setAttribute('stroke-width', '1');
+    gridLines.appendChild(h);
+
+    if(i % 2 === 0 && i !== 0){
+      const lx = document.createElementNS(svgNS,'text');
+      lx.setAttribute('x', toX(i)); lx.setAttribute('y', toY(0)+16); // 숫자 위치 하단으로 조금 더 이동
+      lx.setAttribute('font-size','12'); // 숫자 크기를 9에서 12로 키움
+      lx.setAttribute('fill','var(--chalk-white)');
+      lx.setAttribute('opacity','0.8'); // 좀 더 선명하게 표시
+      lx.setAttribute('text-anchor','middle');
+      lx.setAttribute('font-family','JetBrains Mono, monospace');
+      lx.textContent = i;
+      tickLabels.appendChild(lx);
+
+      const ly = document.createElementNS(svgNS,'text');
+      ly.setAttribute('x', toX(0)-14); // 숫자 크기가 커진 만큼 좌측으로 여백 조정
+      ly.setAttribute('y', toY(i)+4);
+      ly.setAttribute('font-size','12'); // 숫자 크기를 9에서 12로 키움
+      ly.setAttribute('fill','var(--chalk-white)');
+      ly.setAttribute('opacity','0.8'); // 좀 더 선명하게 표시
+      ly.setAttribute('text-anchor','middle');
+      ly.setAttribute('font-family','JetBrains Mono, monospace');
+      ly.textContent = i;
+      tickLabels.appendChild(ly);
+    }
+  }
+
+  const axisXLine = document.createElementNS(svgNS,'line');
+  axisXLine.setAttribute('x1', toX(-RANGE)); axisXLine.setAttribute('x2', toX(RANGE));
+  axisXLine.setAttribute('y1', toY(0)); axisXLine.setAttribute('y2', toY(0));
+  axisXLine.setAttribute('stroke','var(--grid-line-strong)'); axisXLine.setAttribute('stroke-width','1.6');
+  axisLines.appendChild(axisXLine);
+
+  const axisYLine = document.createElementNS(svgNS,'line');
+  axisYLine.setAttribute('y1', toY(-RANGE)); axisYLine.setAttribute('y2', toY(RANGE));
+  axisYLine.setAttribute('x1', toX(0)); axisYLine.setAttribute('x2', toX(0));
+  axisYLine.setAttribute('stroke','var(--grid-line-strong)'); axisYLine.setAttribute('stroke-width','1.6');
+  axisLines.appendChild(axisYLine);
+
+  // ---- 조준 십자선 ----
+  const gLineV = document.createElementNS(svgNS,'line');
+  gLineV.setAttribute('class','guess-line');
+  const gLineH = document.createElementNS(svgNS,'line');
+  gLineH.setAttribute('class','guess-line');
+  const gDot = document.createElementNS(svgNS,'circle');
+  gDot.setAttribute('class','guess-dot');
+  gDot.setAttribute('r','4');
+  guessMarker.appendChild(gLineV);
+  guessMarker.appendChild(gLineH);
+  guessMarker.appendChild(gDot);
+
+  function updateGuessMarker(gx, gy){
+    const px = toX(gx), py = toY(gy);
+    gLineV.setAttribute('x1', px); gLineV.setAttribute('x2', px);
+    gLineV.setAttribute('y1', toY(-RANGE)); gLineV.setAttribute('y2', toY(RANGE));
+    gLineH.setAttribute('y1', py); gLineH.setAttribute('y2', py);
+    gLineH.setAttribute('x1', toX(-RANGE)); gLineH.setAttribute('x2', toX(RANGE));
+    gDot.setAttribute('cx', px); gDot.setAttribute('cy', py);
+  }
+
+  // ---- 게임 상태 ----
+  let fly = {x:0, y:0};
+  let score = 0, streak = 0, bestStreak = 0, hits = 0, attempts = 0;
+  let busy = false;
+  let timeLeft = GAME_SECONDS;
+  let timerHandle = null;
+  let gameActive = false;
+  let playerName = '';
+
+  function randInt(min, max){
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  function placeFly(x, y, animateIn){
+    fly = {x, y};
+    flyEl.setAttribute('x', toX(x));
+    flyEl.setAttribute('y', toY(y));
+    flyEl.classList.remove('flee','enter','squish');
+    if(animateIn){
+      flyEl.style.opacity = 0;
+      void flyEl.offsetWidth;
+      flyEl.classList.add('enter');
+    }
+    flyEl.style.opacity = 1;
+  }
+
+  function spawnFly(animateIn){
+    let nx, ny;
+    do{
+      nx = randInt(-RANGE+1, RANGE-1);
+      ny = randInt(-RANGE+1, RANGE-1);
+    } while(nx === fly.x && ny === fly.y);
+    placeFly(nx, ny, animateIn);
+  }
+
+  function setSliders(x, y){
+    sliderX.value = x; sliderY.value = y;
+    onSliderInput();
+  }
+
+  function onSliderInput(){
+    const gx = parseInt(sliderX.value, 10);
+    const gy = parseInt(sliderY.value, 10);
+    xVal.textContent = gx;
+    yVal.textContent = gy;
+    coordText.textContent = `( ${gx} , ${gy} )`;
+    updateGuessMarker(gx, gy);
+  }
+
+  function setToast(msg, cls){
+    toast.textContent = msg;
+    toast.className = 'toast' + (cls ? ' ' + cls : '');
+  }
+
+  function updateStats(){
+    scoreVal.textContent = score;
+    streakVal.textContent = streak;
+  }
+
+  function updateTimerDisplay(){
+    const m = Math.floor(timeLeft/60);
+    const s = timeLeft%60;
+    timeVal.textContent = m + ':' + String(s).padStart(2,'0');
+    timeVal.classList.toggle('timer-low', timeLeft <= 10);
+  }
+
+  function spawnSplat(px, py){
+    const n = 8;
+    for(let i=0;i<n;i++){
+      const angle = (Math.PI*2*i)/n;
+      const dx = Math.cos(angle) * (18 + Math.random()*10);
+      const dy = Math.sin(angle) * (18 + Math.random()*10);
+      const p = document.createElementNS(svgNS,'circle');
+      p.setAttribute('cx', px); p.setAttribute('cy', py);
+      p.setAttribute('r', 2 + Math.random()*1.5);
+      p.setAttribute('fill', i % 2 === 0 ? 'var(--chalk-orange)' : 'var(--chalk-yellow)');
+      p.setAttribute('class','splat-particle');
+      p.style.setProperty('--dx', dx+'px');
+      p.style.setProperty('--dy', dy+'px');
+      splatLayer.appendChild(p);
+      requestAnimationFrame(()=> p.classList.add('go'));
+      setTimeout(()=> p.remove(), 750);
+    }
+  }
+
+  function spawnImpactFlash(px, py){
+    const c = document.createElementNS(svgNS,'circle');
+    c.setAttribute('cx', px); c.setAttribute('cy', py);
+    c.setAttribute('r', 22);
+    c.setAttribute('fill', 'var(--chalk-yellow)');
+    c.setAttribute('class', 'impact-flash');
+    splatLayer.appendChild(c);
+    requestAnimationFrame(()=> c.classList.add('go'));
+    setTimeout(()=> c.remove(), 400);
+  }
+
+  function spawnScorePopup(px, py){
+    const t = document.createElementNS(svgNS,'text');
+    t.setAttribute('x', px); t.setAttribute('y', py);
+    t.setAttribute('font-size', '20');
+    t.setAttribute('font-family', "'Gaegu', sans-serif");
+    t.setAttribute('font-weight', '700');
+    t.setAttribute('fill', 'var(--chalk-yellow)');
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('class', 'score-popup');
+    t.textContent = '+1';
+    splatLayer.appendChild(t);
+    requestAnimationFrame(()=> t.classList.add('go'));
+    setTimeout(()=> t.remove(), 850);
+  }
+
+  function doSwat(){
+    if(busy || !gameActive) return;
+    const gx = parseInt(sliderX.value, 10);
+    const gy = parseInt(sliderY.value, 10);
+    const isHit = (gx === fly.x && gy === fly.y);
+    busy = true;
+    attempts++;
+
+    const targetPx = toX(isHit ? fly.x : gx);
+    const targetPy = toY(isHit ? fly.y : gy);
+    paddleEl.setAttribute('x', targetPx);
+    paddleEl.setAttribute('y', targetPy);
+    paddleEl.classList.remove('hit','miss');
+    void paddleEl.offsetWidth; // reflow
+    paddleEl.classList.add(isHit ? 'hit' : 'miss');
+
+    if(isHit){
+      hits++;
+      score++;
+      streak++;
+      bestStreak = Math.max(bestStreak, streak);
+      setToast(`찰싹! ( ${fly.x} , ${fly.y} ) 파리를 잡았어요 🎉`, 'hit');
+      
+      setTimeout(()=>{
+        const px = toX(fly.x), py = toY(fly.y);
+        flyEl.classList.add('squish');
+        spawnImpactFlash(px, py);
+        spawnSplat(px, py);
+        spawnScorePopup(px, py - 16);
+        boardWrap.classList.remove('impact-shake');
+        void boardWrap.offsetWidth;
+        boardWrap.classList.add('impact-shake');
+      }, 225);
+      setTimeout(()=>{
+        if(gameActive){
+          spawnFly(true);
+          setSliders(0,0);
+        }
+        busy = false;
+      }, 950);
+    } else {
+      streak = 0;
+      const angle = Math.random() * Math.PI * 2;
+      const dist = 60 + Math.random()*40;
+      flyEl.style.setProperty('--fdx', Math.cos(angle)*dist + 'px');
+      flyEl.style.setProperty('--fdy', Math.sin(angle)*dist + 'px');
+      flyEl.classList.remove('flee');
+      void flyEl.offsetWidth;
+      flyEl.classList.add('flee');
+      setToast('헛스윙! 파리가 도망갔어요 🏃💨', 'miss');
+      setTimeout(()=>{
+        if(gameActive) spawnFly(true);
+        busy = false;
+      }, 450);
+    }
+    updateStats();
+  }
+
+  function tick(){
+    timeLeft--;
+    updateTimerDisplay();
+    if(timeLeft <= 0){
+      clearInterval(timerHandle);
+      endGame();
+    }
+  }
+
+  function showScreen(name){
+    startScreen.classList.toggle('hidden', name !== 'start');
+    gameScreen.classList.toggle('hidden', name !== 'game');
+    resultScreen.classList.toggle('hidden', name !== 'result');
+  }
+
+  function startGame(){
+    playerName = getPlayerName();
+    score = 0; streak = 0; bestStreak = 0; hits = 0; attempts = 0;
+    timeLeft = GAME_SECONDS;
+    busy = false;
+    gameActive = true;
+    updateStats();
+    updateTimerDisplay();
+    swatBtn.disabled = false;
+    skipBtn.disabled = false;
+    setToast('', '');
+    showScreen('game');
+    fly = {x: 999, y: 999}; 
+    spawnFly(false);
+    setSliders(0,0);
+    clearInterval(timerHandle);
+    timerHandle = setInterval(tick, 1000);
+  }
+
+  function endGame(){
+    gameActive = false;
+    swatBtn.disabled = true;
+    skipBtn.disabled = true;
+    resultScore.textContent = score;
+    resultStreak.textContent = bestStreak;
+    resultAcc.textContent = attempts === 0 ? '-' : Math.round((hits/attempts)*100) + '%';
+    if(playerName){
+      resultName.textContent = '🙋 ' + playerName;
+      resultName.classList.remove('hidden');
+    } else {
+      resultName.classList.add('hidden');
+    }
+    if(score >= 15){ resultHeadline.textContent = '파리채의 달인이네요! 🏆'; resultEmoji.textContent = '🏆'; }
+    else if(score >= 8){ resultHeadline.textContent = '훌륭한 실력이에요! 👏'; resultEmoji.textContent = '👏'; }
+    else if(score >= 1){ resultHeadline.textContent = '좋아요, 다음엔 더 잘할 수 있어요!'; resultEmoji.textContent = '🙂'; }
+    else { resultHeadline.textContent = '다음엔 꼭 한 마리 잡아봐요!'; resultEmoji.textContent = '🪰'; }
+    
+    captureMsg.textContent = '';
+    downloadBtn.classList.add('hidden'); // 게임 끝날 땐 일단 숨김
+    captureBtn.disabled = false;
+    captureBtn.textContent = '📋 결과 캡처하기';
+    showScreen('result');
+
+    const acc = attempts === 0 ? 0 : Math.round((hits/attempts)*100);
+    saveScore('fly', playerName, score, { bestStreak, accuracy: acc }).then(()=>{
+      renderLeaderboard(lbResultList);
+    });
+  }
+
+  function renderLeaderboard(listEl){
+    if(!listEl) return;
+    listEl.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
+    fetchTopScores('fly', 5).then(rows=>{
+      if(!rows || rows.length === 0){
+        listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
+        return;
+      }
+      listEl.innerHTML = rows.map((r, i)=>
+        `<li><span class="rank">${i+1}</span><span class="lb-name">${(r.name||'익명')}</span><span class="lb-score">${r.score}점</span></li>`
+      ).join('');
+    });
+  }
+
+  async function captureResult(){
+    captureBtn.disabled = true;
+    captureBtn.textContent = '캡처 중...';
+    captureMsg.textContent = '';
+    
+    try{
+      const canvas = await html2canvas(resultCard, { backgroundColor: '#1e332a', scale: 2 });
+      
+      const dataUrl = canvas.toDataURL('image/png');
+      
+      let copied = false;
+      if(navigator.clipboard && window.ClipboardItem){
+        try{
+          const response = await fetch(dataUrl);
+          const blob = await response.blob();
+          await navigator.clipboard.write([ new ClipboardItem({ 'image/png': blob }) ]);
+          copied = true;
+        }catch(e){ copied = false; }
+      }
+      
+      // 다운로드 버튼 활성화
+      downloadBtn.href = dataUrl;
+      downloadBtn.classList.remove('hidden');
+      
+      captureMsg.textContent = copied
+        ? '✅ 클립보드에 복사됐어요! (패들렛 등에 바로 붙여넣기 가능)'
+        : '📌 아래 [이미지 저장하기] 버튼을 눌러 이미지를 다운로드 해주세요.';
+        
+      captureBtn.disabled = false;
+      captureBtn.textContent = '📋 다시 캡처하기';
+      
+    }catch(err){
+      captureMsg.textContent = '캡처에 실패했어요. 다시 시도해주세요.';
+      captureBtn.disabled = false;
+      captureBtn.textContent = '📋 결과 캡처하기';
+    }
+  }
+
+  sliderX.addEventListener('input', onSliderInput);
+  sliderY.addEventListener('input', onSliderInput);
+  swatBtn.addEventListener('click', doSwat);
+  skipBtn.addEventListener('click', ()=>{
+    if(busy || !gameActive) return;
+    spawnFly(true);
+    setToast('새로운 파리가 나타났어요 🪰', '');
+  });
+  startBtn.addEventListener('click', startGame);
+  retryBtn.addEventListener('click', startGame);
+  captureBtn.addEventListener('click', captureResult);
+
+  // init
+  const storedName = getPlayerName();
+  if(!storedName){
+    location.href = 'index.html';
+    return;
+  }
+  playerName = storedName;
+  playerBadge.textContent = '🙋 ' + storedName;
+  updateGuessMarker(0,0);
+  renderLeaderboard(lbStartList);
+  showScreen('start');
+})();
+</script>
+</body>
+</html>

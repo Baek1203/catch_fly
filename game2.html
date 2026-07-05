@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>별자리 원정대 : 정비례와 반비례</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep: #0B1330;
+    --bg-panel: #161B3D;
+    --bg-panel-2: #1E2550;
+    --grid-line: #2A3363;
+    --axis-line: #4A5490;
+    --direct: #5EEAD4;
+    --direct-dim: #2C6E68;
+    --inverse: #F472B6;
+    --inverse-dim: #7A3A57;
+    --star-gold: #FFD666;
+    --star-dim: #4B5178;
+    --text-main: #F4F1EA;
+    --text-sub: #9BA3D4;
+    --danger: #FF6B6B;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(1px 1px at 12% 22%, #ffffff88 0%, transparent 60%),
+      radial-gradient(1px 1px at 82% 14%, #ffffff66 0%, transparent 60%),
+      radial-gradient(1.5px 1.5px at 34% 68%, #ffffffaa 0%, transparent 60%),
+      radial-gradient(1px 1px at 66% 78%, #ffffff55 0%, transparent 60%),
+      radial-gradient(1.5px 1.5px at 90% 55%, #ffffff77 0%, transparent 60%),
+      radial-gradient(1px 1px at 50% 90%, #ffffff55 0%, transparent 60%),
+      radial-gradient(1px 1px at 8% 80%, #ffffff44 0%, transparent 60%),
+      linear-gradient(180deg, var(--bg-deep) 0%, #0E1638 60%, #0B1330 100%);
+    background-attachment:fixed;
+    color:var(--text-main);
+    font-family:'Noto Sans KR', sans-serif;
+    padding:24px;
+  }
+  .mono{font-family:'Space Mono', monospace;}
+  .display{font-family:'Jua', sans-serif;}
+
+  .app{max-width:1180px;margin:0 auto;}
+
+  /* ---------- Header ---------- */
+  header{
+    display:flex; align-items:center; justify-content:space-between;
+    flex-wrap:wrap; gap:14px;
+    padding:16px 22px;
+    background:linear-gradient(135deg, var(--bg-panel), var(--bg-panel-2));
+    border:1px solid #2A3468;
+    border-radius:var(--radius);
+    margin-bottom:20px;
+  }
+  header h1{
+    font-family:'Jua', sans-serif;
+    font-size:22px;
+    margin:0;
+    color:var(--star-gold);
+    letter-spacing:0.5px;
+  }
+  header .sub{color:var(--text-sub); font-size:12.5px; margin-top:2px;}
+  .progress-dots{display:flex; gap:8px;}
+  .progress-dots .dot{
+    width:26px;height:26px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    font-size:13px; font-weight:700;
+    border:2px solid var(--star-dim); color:var(--text-sub);
+    background:transparent;
+    transition:all .3s;
+  }
+  .progress-dots .dot.done{ border-color:var(--star-gold); background:var(--star-gold); color:#1a1300; }
+  .progress-dots .dot.current{ border-color:var(--direct); color:var(--direct); box-shadow:0 0 10px #5EEAD466; }
+  .score-box{
+    text-align:right;
+  }
+  .score-box .label{font-size:11px; color:var(--text-sub);}
+  .score-box .value{font-family:'Space Mono',monospace; font-size:22px; font-weight:700; color:var(--star-gold);}
+
+  /* ---------- Screens ---------- */
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  /* Intro */
+  .intro-card{
+    background:linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2));
+    border:1px solid #2A3468;
+    border-radius:var(--radius);
+    padding:36px 32px;
+    text-align:center;
+  }
+  .intro-card h2{font-family:'Jua'; font-size:30px; color:var(--star-gold); margin:6px 0 14px;}
+  .intro-card p{color:var(--text-sub); line-height:1.75; max-width:640px; margin:0 auto 10px; font-size:14.5px;}
+  .rules-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+    gap:14px; margin:26px 0; text-align:left;
+  }
+  .rule-item{
+    background:#12173650; border:1px solid #2A3468; border-radius:10px; padding:14px 16px;
+  }
+  .rule-item .icon{font-size:20px;}
+  .rule-item .t{font-weight:700; margin:6px 0 4px; font-size:14px; color:var(--text-main);}
+  .rule-item .d{font-size:12.5px; color:var(--text-sub); line-height:1.55;}
+  .diff-select{ margin:8px 0 28px; }
+  .diff-label{ font-size:12.5px; color:var(--text-sub); margin-bottom:12px; letter-spacing:0.3px; }
+  .diff-btns{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; max-width:640px; margin:0 auto; }
+  @media (max-width:640px){ .diff-btns{grid-template-columns:1fr;} }
+  .diff-btn{
+    background:#12173650; border:2px solid #2A3468; border-radius:12px;
+    padding:14px 10px; cursor:pointer; color:var(--text-main);
+    display:flex; flex-direction:column; gap:6px; align-items:center;
+    transition:all .15s;
+  }
+  .diff-btn:hover{ border-color:#4A5490; }
+  .diff-btn .dt{ font-family:'Jua'; font-size:17px; }
+  .diff-btn .dd{ font-size:10.5px; color:var(--text-sub); line-height:1.4; }
+  .diff-btn.selected{ border-color:var(--star-gold); background:#3a2e0030; box-shadow:0 0 14px #FFD66633; }
+  .diff-btn.selected .dt{ color:var(--star-gold); }
+  .diff-btn[data-diff="medium"].selected{ border-color:var(--direct); box-shadow:0 0 14px #5EEAD433; }
+  .diff-btn[data-diff="medium"].selected .dt{ color:var(--direct); }
+  .diff-btn[data-diff="hard"].selected{ border-color:var(--inverse); box-shadow:0 0 14px #F472B633; }
+  .diff-btn[data-diff="hard"].selected .dt{ color:var(--inverse); }
+
+  .big-btn{
+    font-family:'Jua'; font-size:18px;
+    background:linear-gradient(135deg, var(--star-gold), #ffb84d);
+    color:#241a00; border:none; border-radius:999px;
+    padding:14px 38px; cursor:pointer;
+    box-shadow:0 6px 18px #FFD66644;
+    transition:transform .15s;
+  }
+  .big-btn:hover{transform:translateY(-2px);}
+  .big-btn:active{transform:translateY(0);}
+
+  /* Game layout */
+  .game-grid{
+    display:grid; grid-template-columns:1.35fr 1fr; gap:18px;
+    align-items:stretch;
+  }
+  @media (max-width:880px){
+    .game-grid{grid-template-columns:1fr;}
+    .plane-wrap{ position:sticky; top:8px; z-index:5; }
+    .card-list{ max-height:38vh; }
+  }
+
+  .plane-wrap{
+    background:radial-gradient(circle at 30% 20%, #182055 0%, #0d1230 70%);
+    border:1px solid #2A3468; border-radius:var(--radius);
+    padding:14px; position:relative;
+  }
+  .plane-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; padding:0 4px; flex-wrap:wrap; gap:10px;}
+  .plane-head .title{font-family:'Jua'; font-size:15px; color:var(--text-main);}
+  .plane-head-right{display:flex; align-items:center; gap:14px; flex-wrap:wrap;}
+  .timer-badge{
+    font-family:'Space Mono'; font-weight:700; font-size:14px;
+    background:#10143080; border:1px solid #2A3468; border-radius:999px;
+    padding:5px 14px; color:var(--star-gold); letter-spacing:0.5px;
+    transition:background .2s, border-color .2s, color .2s;
+  }
+  .timer-badge.warning{
+    color:#fff; border-color:var(--danger); background:#4a141480;
+    animation:timerPulse 1s infinite;
+  }
+  @keyframes timerPulse{ 0%,100%{opacity:1;} 50%{opacity:0.55;} }
+  .legend{display:flex; gap:14px; font-size:11.5px; color:var(--text-sub);}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .swatch{width:14px;height:3px;border-radius:2px; display:inline-block;}
+  svg{display:block; width:100%; height:auto;}
+
+  .stat-row{
+    display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;
+  }
+  .stat-chip{
+    flex:1; min-width:120px;
+    background:#10143080; border:1px solid #2A3468; border-radius:10px;
+    padding:9px 12px;
+  }
+  .stat-chip .l{font-size:10.5px; color:var(--text-sub);}
+  .stat-chip .v{font-family:'Space Mono'; font-size:17px; font-weight:700; color:var(--text-main);}
+
+  /* Card panel */
+  .panel{
+    background:linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2));
+    border:1px solid #2A3468; border-radius:var(--radius);
+    padding:16px; display:flex; flex-direction:column; gap:12px;
+    height:100%; min-height:0;
+  }
+  .add-btns{display:flex; gap:10px;}
+  .add-btn{
+    flex:1; border:none; border-radius:10px; padding:12px 8px;
+    font-family:'Noto Sans KR'; font-weight:700; font-size:13px;
+    cursor:pointer; transition:filter .15s, opacity .15s;
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+  }
+  .add-btn.direct{ background:linear-gradient(135deg,var(--direct),#2ec4b6); color:#00302b; }
+  .add-btn.inverse{ background:linear-gradient(135deg,var(--inverse),#c94f8c); color:#3a0a24; }
+  .add-btn:disabled{ opacity:0.35; cursor:not-allowed; filter:grayscale(0.4); }
+  .add-btn:not(:disabled):hover{ filter:brightness(1.1); }
+  .add-btn .eq{font-family:'Space Mono'; font-size:11px; font-weight:400;}
+
+  .hint{font-size:11px; color:var(--text-sub); text-align:center; min-height:14px;}
+
+  .card-list{display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:120px; max-height:48vh; overflow-y:auto; padding-right:2px; overscroll-behavior:contain;}
+  .card-list::-webkit-scrollbar{width:6px;}
+  .card-list::-webkit-scrollbar-thumb{background:#2A3468; border-radius:3px;}
+
+  .card{
+    border-radius:12px; padding:12px 14px;
+    border:1px solid #2A3468;
+    background:#0F1330;
+  }
+  .card.type-direct{ border-color:var(--direct-dim); }
+  .card.type-inverse{ border-color:var(--inverse-dim); }
+  .card.confirmed.type-direct{ background:linear-gradient(135deg,#0F1330,#123330); }
+  .card.confirmed.type-inverse{ background:linear-gradient(135deg,#0F1330,#2c1424); }
+  .card-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
+  .card-name{font-size:12.5px; font-weight:700; color:var(--text-sub);}
+  .card-name.direct{color:var(--direct);}
+  .card-name.inverse{color:var(--inverse);}
+  .card-formula{font-family:'Space Mono'; font-size:16px; font-weight:700; display:flex; align-items:center; gap:5px; min-height:30px;}
+  .k-box{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:30px; padding:2px 8px; margin:0 1px;
+    border:2px solid currentColor; border-radius:7px;
+    background:#00000035; font-weight:700;
+  }
+  .k-fraction{ display:inline-flex; flex-direction:column; align-items:center; line-height:1.15; margin:0 2px; }
+  .k-fraction .k-box{ margin:0 0 2px; }
+  .frac-bar{ width:100%; height:2px; background:currentColor; border-radius:1px; }
+  .frac-x{ font-size:14px; margin-top:2px; }
+  .card-slider{width:100%; margin:6px 0;}
+  .card-slider:disabled{ opacity:0.6; }
+  .card-actions{display:flex; gap:8px; margin-top:8px;}
+  .card-actions button{
+    flex:1; padding:7px 6px; border-radius:8px; border:none; cursor:pointer;
+    font-size:12px; font-weight:700; font-family:'Noto Sans KR';
+  }
+  .btn-confirm{background:var(--star-gold); color:#241a00;}
+  .btn-confirm:hover{filter:brightness(1.08);}
+  .btn-delete{background:#2a2f56; color:var(--text-sub);}
+  .btn-delete:hover{color:var(--danger);}
+  .badge-locked{
+    font-size:10.5px; color:var(--star-gold); background:#3a2e0040; border:1px solid #FFD66655;
+    border-radius:6px; padding:2px 7px; display:inline-block;
+  }
+  .empty-cards{
+    text-align:center; color:var(--text-sub); font-size:12.5px; padding:24px 8px;
+    border:1px dashed #2A3468; border-radius:10px;
+  }
+
+  .finish-btn{
+    margin-top:auto;
+    background:linear-gradient(135deg,#7C8CF8,#5865F2);
+    color:#fff; border:none; border-radius:10px; padding:13px; font-weight:700;
+    font-family:'Jua'; font-size:15px; cursor:pointer;
+  }
+  .finish-btn:disabled{opacity:0.35; cursor:not-allowed;}
+  .finish-btn:not(:disabled):hover{filter:brightness(1.08);}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed; inset:0; background:#05081ecc; backdrop-filter:blur(3px);
+    display:none; align-items:center; justify-content:center; z-index:50; padding:20px;
+  }
+  .modal-overlay.active{display:flex;}
+  .modal{
+    background:linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2));
+    border:1px solid #3a4488; border-radius:18px; padding:30px 32px;
+    max-width:420px; width:100%; text-align:center;
+  }
+  .modal h3{font-family:'Jua'; color:var(--star-gold); font-size:24px; margin:4px 0 18px;}
+  .modal-stars{
+    display:flex; flex-wrap:wrap; justify-content:center; align-items:center;
+    gap:3px; margin-bottom:14px; max-width:100%;
+  }
+  .modal-stars span{ font-size:26px; line-height:1; }
+  @media (max-width:420px){ .modal-stars span{ font-size:20px; } }
+  .modal-row{display:flex; justify-content:space-between; font-size:13.5px; padding:7px 0; border-bottom:1px solid #2A3468;}
+  .modal-row .k{color:var(--text-sub);}
+  .modal-row .v{font-family:'Space Mono'; font-weight:700;}
+  .modal-bonus{color:var(--star-gold); font-weight:700; margin-top:6px; font-size:13px;}
+  .modal-total{font-size:19px; margin-top:16px; font-weight:700;}
+  .modal-total .v{color:var(--star-gold); font-family:'Space Mono';}
+
+  /* Results screen */
+  .results-card{
+    background:linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2));
+    border:1px solid #2A3468; border-radius:var(--radius); padding:32px;
+    text-align:center;
+  }
+  .results-card h2{font-family:'Jua'; color:var(--star-gold); font-size:28px;}
+  .final-score{font-family:'Space Mono'; font-size:52px; font-weight:700; color:var(--star-gold); margin:6px 0 24px;}
+  table.results-table{width:100%; border-collapse:collapse; margin:0 0 24px; font-size:13px;}
+  table.results-table th{color:var(--text-sub); font-weight:600; padding:8px; border-bottom:1px solid #2A3468; text-align:center;}
+  table.results-table td{padding:9px 8px; border-bottom:1px solid #1c2352; text-align:center;}
+  table.results-table td.round-name{text-align:left; font-weight:700;}
+  .constellation-box{margin:20px auto; max-width:520px;}
+
+  /* ---------- 메인으로 돌아가기 / 랭킹 ---------- */
+  .back-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    max-width: 1180px; margin: 0 auto 14px;
+  }
+  .back-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:'Noto Sans KR', sans-serif; font-size:13.5px; font-weight:700;
+    color: var(--text-main); background:#12173650;
+    border: 1px solid #2A3468; border-radius: 999px;
+    padding: 8px 16px; cursor:pointer; text-decoration:none;
+  }
+  .back-btn:hover{ background:#1c235d; }
+  .player-badge{
+    font-family:'Noto Sans KR', sans-serif; font-size:13px; color: var(--text-sub);
+  }
+  .leaderboard{
+    text-align:left; margin: 22px 0 0; background:#12173650;
+    border: 1px solid #2A3468; border-radius: var(--radius); padding: 16px 18px;
+  }
+  .leaderboard h3{
+    font-family:'Jua', sans-serif; font-size:16px; color: var(--star-gold);
+    margin: 0 0 10px; text-align:center;
+  }
+  .leaderboard ol{ list-style:none; margin:0; padding:0; font-size:13.5px; color: var(--text-main); }
+  .leaderboard li{ display:flex; justify-content:space-between; padding: 6px 2px; border-bottom: 1px dashed #2A3468; }
+  .leaderboard li:last-child{ border-bottom:none; }
+  .leaderboard .rank{ color: var(--direct); font-weight:700; width:26px; }
+  .leaderboard .lb-name{ flex:1; text-align:left; padding-left:6px; }
+  .leaderboard .lb-score{ font-family:'Space Mono', monospace; color: var(--star-gold); }
+  .leaderboard .lb-empty{ text-align:center; opacity:0.6; font-size:12.5px; padding: 6px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div class="back-bar">
+    <a href="index.html" class="back-btn">⬅ 게임 선택으로</a>
+    <span class="player-badge" id="playerBadge"></span>
+  </div>
+
+  <header>
+    <div>
+      <h1>✦ 별자리 원정대</h1>
+      <div class="sub">정비례와 반비례로 밤하늘의 별을 모아보자</div>
+    </div>
+    <div class="progress-dots" id="progressDots"></div>
+    <div class="score-box">
+      <div class="label">누적 점수</div>
+      <div class="value mono" id="totalScoreDisplay">0</div>
+    </div>
+  </header>
+
+  <!-- INTRO SCREEN -->
+  <section class="screen active" id="screen-intro">
+    <div class="intro-card">
+      <div style="font-size:40px;">🔭✨</div>
+      <h2>별자리 원정대</h2>
+      <p>망원경 너머 좌표평면에 별이 숨어있어요. 정비례식과 반비례식 카드를 만들어 그래프를 별 위에 정확히 겹치면 별을 획득합니다. 카드는 적게, 별은 많이 모을수록 높은 점수를 받아요. 총 5개 라운드를 완주해 나만의 별자리를 완성해보세요!</p>
+
+      <div class="rules-grid">
+        <div class="rule-item">
+          <div class="icon">🌌</div>
+          <div class="t">1. 카드 추가</div>
+          <div class="d">'정비례 식 추가' 또는 '반비례 식 추가' 버튼으로 카드를 만들고, 슬라이더로 k값을 조절해요.</div>
+        </div>
+        <div class="rule-item">
+          <div class="icon">➰</div>
+          <div class="t">2. 점선 미리보기</div>
+          <div class="d">슬라이더를 움직이면 좌표평면에 점선으로 그래프가 미리 표시돼요.</div>
+        </div>
+        <div class="rule-item">
+          <div class="icon">✅</div>
+          <div class="t">3. 확정 → 실선</div>
+          <div class="d">'확정' 버튼을 누르면 점선이 실선이 되고, 그래프 위의 별을 즉시 획득해요.</div>
+        </div>
+        <div class="rule-item">
+          <div class="icon">🏆</div>
+          <div class="t">4. 점수 계산</div>
+          <div class="d">획득한 별 개수는 (+), 사용한 카드 개수는 (–)로 반영돼요. 적은 카드로 많은 별을 모으는 게 핵심!</div>
+        </div>
+      </div>
+
+      <div class="diff-select">
+        <div class="diff-label">난이도를 선택하세요</div>
+        <div class="diff-btns" id="diffBtns">
+          <button class="diff-btn" data-diff="easy">
+            <span class="dt">초급</span>
+            <span class="dd">별 2~5개 · 기본 정수 슬라이더</span>
+          </button>
+          <button class="diff-btn" data-diff="medium">
+            <span class="dt">중급</span>
+            <span class="dd">별 8~12개 · 더 넓은 범위의 식</span>
+          </button>
+          <button class="diff-btn" data-diff="hard">
+            <span class="dt">고급</span>
+            <span class="dd">별 12~16개 · 가장 많은 식이 필요</span>
+          </button>
+        </div>
+      </div>
+
+      <button class="big-btn" id="startBtn">탐사 시작하기 🚀</button>
+
+      <div class="leaderboard" id="lbStart">
+        <h3>🏆 별자리 원정대 랭킹 TOP 5</h3>
+        <ol id="lbStartList"><li class="lb-empty">불러오는 중...</li></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- GAME SCREEN -->
+  <section class="screen" id="screen-game">
+    <div class="game-grid">
+      <div class="plane-wrap">
+        <div class="plane-head">
+          <div class="title" id="roundTitle">Round 1 / 5</div>
+          <div class="plane-head-right">
+            <div class="timer-badge" id="timerBadge">⏳ 00:00</div>
+            <div class="legend">
+              <span><i class="swatch" style="background:var(--direct)"></i>정비례 y=kx</span>
+              <span><i class="swatch" style="background:var(--inverse)"></i>반비례 y=k/x</span>
+            </div>
+          </div>
+        </div>
+        <svg id="plane" viewBox="0 0 600 600" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="stat-row">
+          <div class="stat-chip"><div class="l">획득한 별</div><div class="v" id="starsStat">0 / 0</div></div>
+          <div class="stat-chip"><div class="l">사용한 카드</div><div class="v" id="cardsStat">0</div></div>
+          <div class="stat-chip"><div class="l">이번 라운드 점수</div><div class="v" id="roundScoreStat">0</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="add-btns">
+          <button class="add-btn direct" id="addDirectBtn">
+            <span>➕ 정비례 식 추가</span>
+            <span class="eq">y = kx</span>
+          </button>
+          <button class="add-btn inverse" id="addInverseBtn">
+            <span>➕ 반비례 식 추가</span>
+            <span class="eq">y = k/x</span>
+          </button>
+        </div>
+        <div class="hint" id="addHint"></div>
+        <div class="card-list" id="cardList"></div>
+        <button class="finish-btn" id="finishRoundBtn">🌠 라운드 종료</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- RESULTS SCREEN -->
+  <section class="screen" id="screen-results">
+    <div class="results-card">
+      <div style="font-size:40px;">🌟🪐🌟</div>
+      <h2>탐사 완료!</h2>
+      <div class="sub" id="finalDiffLabel" style="margin-bottom:4px;"></div>
+      <div class="final-score mono" id="finalScoreDisplay">0</div>
+      <div class="constellation-box">
+        <svg id="constellationSvg" viewBox="0 0 520 160" xmlns="http://www.w3.org/2000/svg"></svg>
+      </div>
+      <table class="results-table">
+        <thead><tr><th style="text-align:left">라운드</th><th>별</th><th>카드</th><th>보너스</th><th>점수</th></tr></thead>
+        <tbody id="resultsTableBody"></tbody>
+      </table>
+      <div class="leaderboard" id="lbResult">
+        <h3>🏆 별자리 원정대 랭킹 TOP 5</h3>
+        <ol id="lbResultList"><li class="lb-empty">불러오는 중...</li></ol>
+      </div>
+
+      <button class="big-btn" id="restartBtn">다시 탐사하기 🔄</button>
+    </div>
+  </section>
+
+</div>
+
+<!-- Round result modal -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">라운드 결과</h3>
+    <div class="modal-stars" id="modalStars"></div>
+    <div class="modal-row"><span class="k">획득한 별</span><span class="v" id="modalStarsText"></span></div>
+    <div class="modal-row"><span class="k">사용한 카드</span><span class="v" id="modalCardsText"></span></div>
+    <div class="modal-bonus" id="modalBonusText"></div>
+    <div class="modal-total">라운드 점수 <span class="v" id="modalRoundScore"></span></div>
+    <button class="big-btn" id="modalNextBtn" style="margin-top:22px;">다음으로</button>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-shared.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ================= CONFIG ================= */
+  const R = 10;              // coordinate range -R..R
+  const VIEW = 600;
+  const MARGIN = 50;
+  const SCALE = (VIEW - 2*MARGIN) / (2*R);
+  const EPS = 0.05;
+
+  function sx(x){ return MARGIN + (x + R) * SCALE; }
+  function sy(y){ return MARGIN + (R - y) * SCALE; }
+
+  const ROUNDS_EASY = [
+    { stars:[{x:2,y:4},{x:-3,y:6}] },
+    { stars:[{x:2,y:6},{x:-3,y:-4}] },
+    { stars:[{x:3,y:6},{x:-3,y:-6},{x:4,y:2}] },
+    { stars:[{x:3,y:-6},{x:-3,y:6},{x:4,y:-2},{x:-4,y:2}] },
+    { stars:[{x:5,y:5},{x:-5,y:-5},{x:3,y:-6},{x:6,y:3},{x:-3,y:-6}] },
+  ];
+
+  // 중급: 좌표와 k값 모두 정수. 초급보다 서로 다른 식(k값) 개수를 크게 늘려 별도 훨씬 많아진다.
+  const ROUNDS_MEDIUM = [
+    { stars:[
+        {x:3,y:6},{x:-3,y:-6},     // y=2x
+        {x:2,y:-6},{x:-2,y:6},     // y=-3x
+        {x:4,y:3},{x:-3,y:-4},     // y=12/x
+        {x:3,y:-3},{x:-3,y:3},     // y=-9/x
+      ] },
+    { stars:[
+        {x:2,y:6},{x:-2,y:-6},     // y=3x
+        {x:4,y:-8},{x:-4,y:8},     // y=-2x
+        {x:3,y:5},{x:-5,y:-3},     // y=15/x
+        {x:2,y:-5},{x:-5,y:2},     // y=-10/x
+        {x:2,y:3},{x:-3,y:-2},     // y=6/x
+      ] },
+    { stars:[
+        {x:2,y:8},{x:-2,y:-8},     // y=4x
+        {x:2,y:-8},{x:-2,y:8},     // y=-4x
+        {x:3,y:-6},{x:-6,y:3},     // y=-18/x
+        {x:3,y:3},{x:-3,y:-3},     // y=9/x
+        {x:3,y:-7},{x:-7,y:3},     // y=-21/x
+      ] },
+    { stars:[
+        {x:2,y:10},{x:-2,y:-10},   // y=5x
+        {x:2,y:-10},{x:-2,y:10},   // y=-5x
+        {x:6,y:6},{x:-6,y:-6},     // y=1x
+        {x:4,y:6},{x:-6,y:-4},     // y=24/x
+        {x:2,y:-7},{x:-7,y:2},     // y=-14/x
+        {x:2,y:5},{x:-2,y:-5},     // y=10/x
+      ] },
+    { stars:[
+        {x:2,y:6},{x:-2,y:-6},     // y=3x
+        {x:5,y:-5},{x:-5,y:5},     // y=-1x
+        {x:2,y:8},{x:-2,y:-8},     // y=4x
+        {x:3,y:6},{x:-6,y:-3},     // y=18/x
+        {x:3,y:-8},{x:-8,y:3},     // y=-24/x
+        {x:3,y:5},{x:-5,y:-3},     // y=15/x
+      ] },
+  ];
+
+  // 고급: 좌표와 k값 모두 정수. 중급보다 서로 다른 식의 개수가 더 많아 카드도 더 많이 필요하다.
+  const ROUNDS_HARD = [
+    { stars:[
+        {x:7,y:7},{x:-7,y:-7},     // y=1x
+        {x:2,y:-6},{x:-2,y:6},     // y=-3x
+        {x:4,y:8},{x:-4,y:-8},     // y=2x
+        {x:3,y:5},{x:-5,y:-3},     // y=15/x
+        {x:4,y:-6},{x:-6,y:4},     // y=-24/x
+        {x:4,y:2},{x:-4,y:-2},     // y=8/x
+      ] },
+    { stars:[
+        {x:2,y:8},{x:-2,y:-8},     // y=4x
+        {x:5,y:-10},{x:-5,y:10},   // y=-2x
+        {x:3,y:9},{x:-3,y:-9},     // y=3x
+        {x:4,y:5},{x:-5,y:-4},     // y=20/x
+        {x:2,y:-9},{x:-9,y:2},     // y=-18/x
+        {x:3,y:3},{x:-3,y:-3},     // y=9/x
+        {x:2,y:-7},{x:-7,y:2},     // y=-14/x
+      ] },
+    { stars:[
+        {x:2,y:10},{x:-2,y:-10},   // y=5x
+        {x:2,y:-8},{x:-2,y:8},     // y=-4x
+        {x:9,y:9},{x:-9,y:-9},     // y=1x
+        {x:3,y:4},{x:-4,y:-3},     // y=12/x
+        {x:4,y:-5},{x:-5,y:4},     // y=-20/x
+        {x:2,y:3},{x:-3,y:-2},     // y=6/x
+        {x:5,y:-6},{x:-6,y:5},     // y=-30/x
+      ] },
+    { stars:[
+        {x:1,y:6},{x:-1,y:-6},     // y=6x
+        {x:2,y:-10},{x:-2,y:10},   // y=-5x
+        {x:3,y:9},{x:-3,y:-9},     // y=3x
+        {x:8,y:-8},{x:-8,y:8},     // y=-1x
+        {x:4,y:4},{x:-4,y:-4},     // y=16/x
+        {x:3,y:-7},{x:-7,y:3},     // y=-21/x
+        {x:2,y:5},{x:-2,y:-5},     // y=10/x
+        {x:3,y:-9},{x:-9,y:3},     // y=-27/x
+      ] },
+    { stars:[
+        {x:5,y:10},{x:-5,y:-10},   // y=2x
+        {x:1,y:-6},{x:-1,y:6},     // y=-6x
+        {x:2,y:8},{x:-2,y:-8},     // y=4x
+        {x:3,y:-9},{x:-3,y:9},     // y=-3x
+        {x:4,y:6},{x:-6,y:-4},     // y=24/x
+        {x:4,y:-8},{x:-8,y:4},     // y=-32/x
+        {x:2,y:7},{x:-7,y:-2},     // y=14/x
+        {x:2,y:-9},{x:-9,y:2},     // y=-18/x
+      ] },
+  ];
+
+  const DIFFICULTIES = {
+    easy:   { label:'초급', rounds: ROUNDS_EASY,   directStep:1, directRange:5,  inverseStep:1, inverseRange:20, scoreMult:1.0, timeLimit:60,  accent:'var(--star-gold)' },
+    medium: { label:'중급', rounds: ROUNDS_MEDIUM, directStep:1, directRange:8,  inverseStep:1, inverseRange:28, scoreMult:1.3, timeLimit:150, accent:'var(--direct)' },
+    hard:   { label:'고급', rounds: ROUNDS_HARD,   directStep:1, directRange:10, inverseStep:1, inverseRange:36, scoreMult:1.6, timeLimit:210, accent:'var(--inverse)' },
+  };
+
+  let selectedDifficulty = 'easy';
+  let timerInterval = null;
+
+  /* ================= STATE ================= */
+  let state = {
+    difficulty: 'easy',
+    roundIndex: 0,
+    totalScore: 0,
+    roundResults: [],   // {starsCaptured,totalStars,cardsUsed,score,bonus}
+    cards: [],           // {id,type,k,confirmed}
+    capturedSet: new Set(), // indices of captured stars in current round
+    nextCardId: 1,
+    timeRemaining: 0,
+  };
+
+  const diffConfig = () => DIFFICULTIES[state.difficulty];
+  const currentRounds = () => diffConfig().rounds;
+  const allStars = () => currentRounds()[state.roundIndex].stars;
+
+  /* ================= HELPERS: MATH/SVG ================= */
+  function buildDirectValues(range){
+    const vals = [];
+    for(let n=1;n<=range;n++){ vals.push({value:n, label:String(n)}); vals.push({value:-n, label:String(-n)}); }
+    for(let n=2;n<=10;n++){ vals.push({value:1/n, label:`1/${n}`}); vals.push({value:-1/n, label:`-1/${n}`}); }
+    vals.sort((a,b)=>a.value-b.value);
+    return vals;
+  }
+
+  function closestDirectEntry(k, range){
+    const arr = buildDirectValues(range);
+    let best = arr[0], bestDiff = Infinity;
+    arr.forEach(item=>{ const d = Math.abs(item.value-k); if(d<bestDiff){ bestDiff=d; best=item; } });
+    return best;
+  }
+
+  function fmtK(k){
+    let r = Math.round(k*100)/100;
+    return (r % 1 === 0) ? r.toString() : r.toString();
+  }
+
+  function buildFormulaHTML(card){
+    const kTxt = card.type==='direct' ? card.kLabel : fmtK(card.k);
+    if(card.type==='direct'){
+      return `y = <span class="k-box">${kTxt}</span>x`;
+    } else {
+      return `y = <span class="k-fraction"><span class="k-box">${kTxt}</span><span class="frac-bar"></span><span class="frac-x">x</span></span>`;
+    }
+  }
+
+  function directEndpoints(k){
+    let pts = [];
+    [-R, R].forEach(x=>{ let y=k*x; if(Math.abs(y) <= R+1e-9) pts.push([x,y]); });
+    if(k !== 0){
+      [-R, R].forEach(y=>{ let x=y/k; if(Math.abs(x) <= R+1e-9) pts.push([x,y]); });
+    }
+    let uniq = [];
+    pts.forEach(p=>{
+      if(!uniq.some(q=>Math.abs(q[0]-p[0])<1e-6 && Math.abs(q[1]-p[1])<1e-6)) uniq.push(p);
+    });
+    return uniq.slice(0,2);
+  }
+
+  function inverseBranches(k){
+    const N = 50;
+    const xMinAbs = Math.max(Math.abs(k) / R, 0.08);
+    let b1 = [], b2 = [];
+    for(let i=0;i<=N;i++){
+      let t = i/N;
+      let x = xMinAbs * Math.pow(R/xMinAbs, t);
+      let y = k/x;
+      if(Math.abs(y) <= R+1e-9) b1.push([x,y]);
+    }
+    for(let i=0;i<=N;i++){
+      let t = i/N;
+      let x = -(xMinAbs * Math.pow(R/xMinAbs, t));
+      let y = k/x;
+      if(Math.abs(y) <= R+1e-9) b2.push([x,y]);
+    }
+    return [b1, b2];
+  }
+
+  function pointsToPath(pts){
+    if(pts.length===0) return "";
+    return "M " + pts.map(p=>`${sx(p[0]).toFixed(2)} ${sy(p[1]).toFixed(2)}`).join(" L ");
+  }
+
+  function starShapePath(cx, cy, rOuter, rInner){
+    let pts = [];
+    for(let i=0;i<10;i++){
+      let ang = -Math.PI/2 + i * Math.PI/5;
+      let r = (i%2===0) ? rOuter : rInner;
+      pts.push([cx + r*Math.cos(ang), cy + r*Math.sin(ang)]);
+    }
+    return "M " + pts.map(p=>`${p[0].toFixed(2)} ${p[1].toFixed(2)}`).join(" L ") + " Z";
+  }
+
+  function checkCapture(star, card){
+    if(card.type === 'direct'){
+      return Math.abs(star.y - card.k*star.x) < EPS;
+    } else {
+      return Math.abs(star.x*star.y - card.k) < EPS;
+    }
+  }
+
+  /* ================= SVG BUILD ================= */
+  const svgNS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs){
+    let e = document.createElementNS(svgNS, tag);
+    for(let k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function buildGrid(svg){
+    // subtle grid lines every 1 unit
+    for(let i=-R;i<=R;i++){
+      let opacityMajor = (i % 2 === 0) ? 0.9 : 0.35;
+      svg.appendChild(el('line',{x1:sx(i),y1:sy(-R),x2:sx(i),y2:sy(R),stroke:'var(--grid-line)','stroke-width':1,opacity:opacityMajor}));
+      svg.appendChild(el('line',{x1:sx(-R),y1:sy(i),x2:sx(R),y2:sy(i),stroke:'var(--grid-line)','stroke-width':1,opacity:opacityMajor}));
+    }
+    // axes
+    svg.appendChild(el('line',{x1:sx(-R),y1:sy(0),x2:sx(R),y2:sy(0),stroke:'var(--axis-line)','stroke-width':2}));
+    svg.appendChild(el('line',{x1:sx(0),y1:sy(-R),x2:sx(0),y2:sy(R),stroke:'var(--axis-line)','stroke-width':2}));
+    // labels every 2
+    for(let i=-R;i<=R;i+=2){
+      if(i!==0){
+        let lx = el('text',{x:sx(i),y:sy(0)+16,'text-anchor':'middle','font-size':10,fill:'var(--text-sub)','font-family':'Space Mono'});
+        lx.textContent = i;
+        svg.appendChild(lx);
+        let ly = el('text',{x:sx(0)-10,y:sy(i)+3,'text-anchor':'end','font-size':10,fill:'var(--text-sub)','font-family':'Space Mono'});
+        ly.textContent = i;
+        svg.appendChild(ly);
+      }
+    }
+    let originLabel = el('text',{x:sx(0)-10,y:sy(0)+16,'text-anchor':'end','font-size':10,fill:'var(--text-sub)','font-family':'Space Mono'});
+    originLabel.textContent = "0";
+    svg.appendChild(originLabel);
+  }
+
+  function buildGraphs(svg){
+    state.cards.forEach(card=>{
+      const color = card.type === 'direct' ? 'var(--direct)' : 'var(--inverse)';
+      const dash = card.confirmed ? 'none' : '6,6';
+      const width = card.confirmed ? 3 : 2;
+      const op = card.confirmed ? 1 : 0.75;
+      if(card.type === 'direct'){
+        let pts = directEndpoints(card.k);
+        if(pts.length===2){
+          let path = pointsToPath(pts);
+          svg.appendChild(el('path',{d:path, stroke:color, 'stroke-width':width, fill:'none', 'stroke-dasharray':dash, opacity:op, 'stroke-linecap':'round'}));
+        }
+      } else {
+        let [b1,b2] = inverseBranches(card.k);
+        [b1,b2].forEach(branch=>{
+          if(branch.length>1){
+            let path = pointsToPath(branch);
+            svg.appendChild(el('path',{d:path, stroke:color, 'stroke-width':width, fill:'none', 'stroke-dasharray':dash, opacity:op, 'stroke-linecap':'round'}));
+          }
+        });
+      }
+    });
+  }
+
+  function buildStars(svg){
+    // glow filter
+    let defs = el('defs',{});
+    let filter = el('filter',{id:'starGlow', x:'-60%', y:'-60%', width:'220%', height:'220%'});
+    filter.appendChild(el('feGaussianBlur',{stdDeviation:3.2, result:'blur'}));
+    let merge = el('feMerge',{});
+    merge.appendChild(el('feMergeNode',{in:'blur'}));
+    merge.appendChild(el('feMergeNode',{in:'SourceGraphic'}));
+    filter.appendChild(merge);
+    defs.appendChild(filter);
+    svg.appendChild(defs);
+
+    allStars().forEach((star, idx)=>{
+      const captured = state.capturedSet.has(idx);
+      const cx = sx(star.x), cy = sy(star.y);
+      const path = starShapePath(cx, cy, captured?11:9, captured?4.6:3.6);
+      const g = el('g',{});
+      if(captured) g.setAttribute('filter','url(#starGlow)');
+      const starEl = el('path',{
+        d: path,
+        fill: captured ? 'var(--star-gold)' : '#232A56',
+        stroke: captured ? '#FFECB3' : 'var(--star-dim)',
+        'stroke-width': captured ? 1.5 : 1.5,
+      });
+      g.appendChild(starEl);
+      svg.appendChild(g);
+    });
+  }
+
+  function renderPlane(){
+    const svg = document.getElementById('plane');
+    svg.innerHTML = "";
+    buildGrid(svg);
+    buildGraphs(svg);
+    buildStars(svg);
+  }
+
+  /* ================= CARD PANEL ================= */
+  function hasPendingCard(){
+    return state.cards.some(c=>!c.confirmed);
+  }
+
+  function renderCards(){
+    const list = document.getElementById('cardList');
+    list.innerHTML = "";
+    if(state.cards.length===0){
+      const empty = document.createElement('div');
+      empty.className = 'empty-cards';
+      empty.textContent = '아직 카드가 없어요. 위 버튼으로 식을 추가해보세요.';
+      list.appendChild(empty);
+    }
+    state.cards.forEach((card, i)=>{
+      const div = document.createElement('div');
+      div.className = `card type-${card.type} ${card.confirmed?'confirmed':''}`;
+
+      const top = document.createElement('div');
+      top.className = 'card-top';
+      const name = document.createElement('span');
+      name.className = `card-name ${card.type}`;
+      name.textContent = (card.type==='direct'?'정비례':'반비례') + ` #${i+1}`;
+      top.appendChild(name);
+      if(card.confirmed){
+        const badge = document.createElement('span');
+        badge.className = 'badge-locked';
+        badge.textContent = '🔒 확정됨';
+        top.appendChild(badge);
+      }
+      div.appendChild(top);
+
+      const formula = document.createElement('div');
+      formula.className = 'card-formula mono';
+      formula.style.color = card.type==='direct' ? 'var(--direct)' : 'var(--inverse)';
+      formula.innerHTML = buildFormulaHTML(card);
+      div.appendChild(formula);
+
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'card-slider';
+      const cfg = diffConfig();
+      let directValues = null;
+      if(card.type==='direct'){
+        directValues = buildDirectValues(cfg.directRange);
+        if(card.kLabel === undefined){
+          const entry = closestDirectEntry(card.k, cfg.directRange);
+          card.k = entry.value; card.kLabel = entry.label;
+        }
+        let idx = directValues.findIndex(v=>v.label===card.kLabel);
+        if(idx < 0) idx = directValues.findIndex(v=>Math.abs(v.value-card.k)<1e-9);
+        if(idx < 0) idx = Math.floor(directValues.length/2);
+        slider.min = 0; slider.max = directValues.length-1; slider.step = 1;
+        slider.value = idx;
+      } else {
+        slider.min = -cfg.inverseRange; slider.max = cfg.inverseRange; slider.step = cfg.inverseStep;
+        slider.value = card.k;
+      }
+      slider.disabled = card.confirmed;
+      slider.addEventListener('input', ()=>{
+        if(card.type==='direct'){
+          const idx = parseInt(slider.value, 10);
+          const entry = directValues[idx];
+          card.k = entry.value;
+          card.kLabel = entry.label;
+        } else {
+          let v = parseFloat(slider.value);
+          if(v===0){
+            v = (card.k < 0) ? -1 : 1;
+            slider.value = v;
+          }
+          card.k = v;
+        }
+        formula.innerHTML = buildFormulaHTML(card);
+        renderPlane();
+      });
+      div.appendChild(slider);
+
+      if(!card.confirmed){
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+        const confirmBtn = document.createElement('button');
+        confirmBtn.className = 'btn-confirm';
+        confirmBtn.textContent = '✔ 확정하기';
+        confirmBtn.addEventListener('click', ()=>confirmCard(card.id));
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.textContent = '✕ 삭제';
+        delBtn.addEventListener('click', ()=>deleteCard(card.id));
+        actions.appendChild(confirmBtn);
+        actions.appendChild(delBtn);
+        div.appendChild(actions);
+      }
+
+      list.appendChild(div);
+    });
+
+    document.getElementById('addDirectBtn').disabled = hasPendingCard();
+    document.getElementById('addInverseBtn').disabled = hasPendingCard();
+    document.getElementById('addHint').textContent = hasPendingCard() ? '먼저 카드를 확정하거나 삭제해주세요.' : '';
+  }
+
+  function addCard(type){
+    if(hasPendingCard()) return;
+    state.cards.push({ id: state.nextCardId++, type, k: 1, kLabel: '1', confirmed:false });
+    renderCards();
+    renderPlane();
+  }
+
+  function deleteCard(id){
+    state.cards = state.cards.filter(c=>c.id!==id);
+    renderCards();
+    renderPlane();
+  }
+
+  function confirmCard(id){
+    const card = state.cards.find(c=>c.id===id);
+    if(!card) return;
+    card.confirmed = true;
+    allStars().forEach((star, idx)=>{
+      if(!state.capturedSet.has(idx) && checkCapture(star, card)){
+        state.capturedSet.add(idx);
+      }
+    });
+    renderCards();
+    renderPlane();
+    updateStats();
+  }
+
+  /* ================= TIMER ================= */
+  function fmtTime(sec){
+    const m = Math.floor(sec/60);
+    const s = sec%60;
+    return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  }
+
+  function stopTimer(){
+    if(timerInterval){ clearInterval(timerInterval); timerInterval = null; }
+  }
+
+  function renderTimer(){
+    const badge = document.getElementById('timerBadge');
+    badge.textContent = `⏳ ${fmtTime(Math.max(0,state.timeRemaining))}`;
+    badge.classList.toggle('warning', state.timeRemaining <= 10);
+  }
+
+  function startTimer(seconds){
+    stopTimer();
+    state.timeRemaining = seconds;
+    renderTimer();
+    timerInterval = setInterval(()=>{
+      state.timeRemaining -= 1;
+      renderTimer();
+      if(state.timeRemaining <= 0){
+        stopTimer();
+        finishRound(true); // time's up: force-finish
+      }
+    }, 1000);
+  }
+
+  /* ================= STATS / SCORE ================= */
+  function confirmedCardsCount(){
+    return state.cards.filter(c=>c.confirmed).length;
+  }
+
+  function currentRoundScore(){
+    const captured = state.capturedSet.size;
+    const cards = confirmedCardsCount();
+    return Math.round(Math.max(0, captured*100 - cards*20) * diffConfig().scoreMult);
+  }
+
+  function updateStats(){
+    const total = allStars().length;
+    document.getElementById('starsStat').textContent = `${state.capturedSet.size} / ${total}`;
+    document.getElementById('cardsStat').textContent = `${confirmedCardsCount()}`;
+    document.getElementById('roundScoreStat').textContent = `${currentRoundScore()}`;
+    document.getElementById('finishRoundBtn').disabled = hasPendingCard();
+  }
+
+  function updateHeader(){
+    document.getElementById('totalScoreDisplay').textContent = state.totalScore;
+    const cfg = diffConfig();
+    document.getElementById('roundTitle').textContent = `[${cfg.label}] Round ${state.roundIndex+1} / ${currentRounds().length}`;
+    const dotsWrap = document.getElementById('progressDots');
+    dotsWrap.innerHTML = "";
+    for(let i=0;i<currentRounds().length;i++){
+      const d = document.createElement('div');
+      let cls = 'dot';
+      if(i < state.roundIndex) cls += ' done';
+      else if(i === state.roundIndex) cls += ' current';
+      d.className = cls;
+      d.textContent = (i < state.roundIndex) ? '★' : (i+1);
+      dotsWrap.appendChild(d);
+    }
+  }
+
+  /* ================= ROUND FLOW ================= */
+  function startRound(idx){
+    state.roundIndex = idx;
+    state.cards = [];
+    state.capturedSet = new Set();
+    updateHeader();
+    renderCards();
+    renderPlane();
+    updateStats();
+    startTimer(diffConfig().timeLimit);
+  }
+
+  function finishRound(forced){
+    if(!forced && hasPendingCard()) return;
+    stopTimer();
+    if(hasPendingCard()){
+      // time ran out with an unconfirmed card on the table: drop it, it never counted
+      state.cards = state.cards.filter(c=>c.confirmed);
+    }
+    const captured = state.capturedSet.size;
+    const total = allStars().length;
+    const cards = confirmedCardsCount();
+    const mult = diffConfig().scoreMult;
+    const base = Math.round(Math.max(0, captured*100 - cards*20) * mult);
+    const perfect = (captured === total) && (total > 0);
+    const bonus = perfect ? 100 : 0;
+    const roundScore = base + bonus;
+
+    state.roundResults.push({ starsCaptured:captured, totalStars: total, cardsUsed: cards, score: roundScore, bonus });
+    state.totalScore += roundScore;
+
+    showRoundModal(captured, total, cards, roundScore, bonus, !!forced);
+  }
+
+  function showRoundModal(captured, total, cards, roundScore, bonus, timedOut){
+    const overlay = document.getElementById('modalOverlay');
+    const isLast = state.roundIndex === currentRounds().length - 1;
+    document.getElementById('modalTitle').textContent = timedOut ? `⏰ 시간 종료! Round ${state.roundIndex+1} 결과` : `Round ${state.roundIndex+1} 결과`;
+    const starsWrap = document.getElementById('modalStars');
+    starsWrap.innerHTML = "";
+    const starFontSize = total > 12 ? 18 : total > 8 ? 22 : 26;
+    for(let i=0;i<total;i++){
+      const s = document.createElement('span');
+      s.style.fontSize = starFontSize + 'px';
+      s.textContent = i < captured ? '⭐' : '☆';
+      starsWrap.appendChild(s);
+    }
+    document.getElementById('modalStarsText').textContent = `${captured} / ${total}`;
+    document.getElementById('modalCardsText').textContent = `${cards}개`;
+    document.getElementById('modalBonusText').textContent = bonus>0 ? '🎉 별자리 완성 보너스 +100!' : '';
+    document.getElementById('modalRoundScore').textContent = roundScore;
+    document.getElementById('modalNextBtn').textContent = isLast ? '결과 확인하기' : '다음 라운드로';
+    overlay.classList.add('active');
+
+    document.getElementById('modalNextBtn').onclick = ()=>{
+      overlay.classList.remove('active');
+      updateHeader();
+      if(isLast){
+        showResults();
+      } else {
+        showScreen('game');
+        startRound(state.roundIndex+1);
+      }
+    };
+  }
+
+  /* ================= RESULTS ================= */
+  function showResults(){
+    showScreen('results');
+    document.getElementById('finalDiffLabel').textContent = `[${diffConfig().label}] 난이도 클리어`;
+    document.getElementById('finalScoreDisplay').textContent = state.totalScore;
+    const tbody = document.getElementById('resultsTableBody');
+    tbody.innerHTML = "";
+    state.roundResults.forEach((r, i)=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td class="round-name">Round ${i+1}</td><td>${r.starsCaptured}/${r.totalStars}</td><td>${r.cardsUsed}</td><td>${r.bonus>0?'✔':'-'}</td><td class="mono" style="color:var(--star-gold)">${r.score}</td>`;
+      tbody.appendChild(tr);
+    });
+    buildConstellation();
+
+    const playerName = getPlayerName();
+    saveScore('star', playerName, state.totalScore, { difficulty: state.difficulty }).then(()=>{
+      renderLeaderboard(document.getElementById('lbResultList'));
+    });
+  }
+
+  function renderLeaderboard(listEl){
+    if(!listEl) return;
+    listEl.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
+    fetchTopScores('star', 5).then(rows=>{
+      if(!rows || rows.length === 0){
+        listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
+        return;
+      }
+      listEl.innerHTML = rows.map((r, i)=>
+        `<li><span class="rank">${i+1}</span><span class="lb-name">${(r.name||'익명')}</span><span class="lb-score">${r.score}점</span></li>`
+      ).join('');
+    });
+  }
+
+  function buildConstellation(){
+    const svg = document.getElementById('constellationSvg');
+    svg.innerHTML = "";
+    const totalStars = state.roundResults.reduce((s,r)=>s+r.starsCaptured,0);
+    const N = Math.max(totalStars, 1);
+    const pts = [];
+    const w = 520, h = 160, cx = w/2, cy = h/2;
+    for(let i=0;i<N;i++){
+      const ang = (i / N) * Math.PI * 2 - Math.PI/2;
+      const rad = 55 + (i%3)*18;
+      pts.push([cx + rad*Math.cos(ang), cy + rad*Math.sin(ang)]);
+    }
+    for(let i=0;i<pts.length;i++){
+      for(let j=i+1;j<pts.length;j++){
+        if(Math.random() < 0.18){
+          svg.appendChild(el('line',{x1:pts[i][0],y1:pts[i][1],x2:pts[j][0],y2:pts[j][1],stroke:'#5EEAD455','stroke-width':1}));
+        }
+      }
+    }
+    pts.forEach(p=>{
+      const path = starShapePath(p[0], p[1], 8, 3.4);
+      const g = el('g',{filter:'url(#constGlow)'});
+      svg.appendChild(g);
+      g.appendChild(el('path',{d:path, fill:'var(--star-gold)', stroke:'#FFECB3', 'stroke-width':1}));
+    });
+    if(totalStars===0){
+      const t = el('text',{x:cx,y:cy,'text-anchor':'middle','font-size':13,fill:'var(--text-sub)'});
+      t.textContent = "아직 모은 별이 없어요";
+      svg.appendChild(t);
+    }
+  }
+
+  /* ================= SCREEN NAV ================= */
+  function showScreen(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById(`screen-${name}`).classList.add('active');
+  }
+
+  /* ================= INIT / EVENTS ================= */
+  function renderDiffButtons(){
+    document.querySelectorAll('.diff-btn').forEach(btn=>{
+      btn.classList.toggle('selected', btn.dataset.diff === selectedDifficulty);
+    });
+  }
+  document.querySelectorAll('.diff-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      selectedDifficulty = btn.dataset.diff;
+      renderDiffButtons();
+    });
+  });
+  renderDiffButtons();
+
+  document.getElementById('startBtn').addEventListener('click', ()=>{
+    state = { difficulty: selectedDifficulty, roundIndex:0, totalScore:0, roundResults:[], cards:[], capturedSet:new Set(), nextCardId:1 };
+    showScreen('game');
+    startRound(0);
+  });
+
+  document.getElementById('addDirectBtn').addEventListener('click', ()=>addCard('direct'));
+  document.getElementById('addInverseBtn').addEventListener('click', ()=>addCard('inverse'));
+  document.getElementById('finishRoundBtn').addEventListener('click', ()=>finishRound(false));
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    stopTimer();
+    showScreen('intro');
+  });
+
+  const storedName = getPlayerName();
+  if(!storedName){
+    location.href = 'index.html';
+    return;
+  }
+  document.getElementById('playerBadge').textContent = '🙋 ' + storedName;
+  renderLeaderboard(document.getElementById('lbStartList'));
+
+  updateHeader();
+})();
+</script>
+</body>
+</html>

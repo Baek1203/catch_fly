@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수학 게임 아케이드</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-deep:#0B1330;
+    --bg-panel:#161B3D;
+    --bg-panel-2:#1E2550;
+    --line:#2A3468;
+    --cream:#F4F1EA;
+    --sub:#9BA3D4;
+    --gold:#FFD666;
+    --teal:#5EEAD4;
+    --pink:#F472B6;
+    --wood-1:#7a5334;
+    --wood-2:#4d3320;
+    --board-bg:#1e332a;
+    --board-bg-2:#152720;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(1px 1px at 12% 22%, #ffffff88 0%, transparent 60%),
+      radial-gradient(1px 1px at 82% 14%, #ffffff66 0%, transparent 60%),
+      radial-gradient(1.5px 1.5px at 34% 68%, #ffffffaa 0%, transparent 60%),
+      radial-gradient(1px 1px at 66% 78%, #ffffff55 0%, transparent 60%),
+      radial-gradient(1.5px 1.5px at 90% 55%, #ffffff77 0%, transparent 60%),
+      linear-gradient(180deg, var(--bg-deep) 0%, #0E1638 55%, #0B1330 100%);
+    background-attachment:fixed;
+    color:var(--cream);
+    font-family:'Noto Sans KR', sans-serif;
+    padding: 28px 16px 60px;
+  }
+  .stage{ max-width: 980px; margin: 0 auto; }
+
+  /* ---------- Hero ---------- */
+  .hero{ text-align:center; margin-bottom: 30px; }
+  .hero .eyebrow{
+    font-family:'JetBrains Mono', monospace; font-size:12px; letter-spacing:2px;
+    color: var(--teal); text-transform:uppercase; margin-bottom:8px;
+  }
+  .hero h1{
+    font-family:'Gaegu', sans-serif; font-weight:700; font-size:40px; margin:0 0 8px;
+    color: var(--gold); text-shadow: 0 0 18px rgba(255,214,102,0.25);
+  }
+  .hero p{ color: var(--sub); font-size:14.5px; margin:0; }
+
+  /* ---------- Name card ---------- */
+  .id-card{
+    max-width: 460px; margin: 26px auto 40px;
+    background: linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2));
+    border: 1px solid var(--line); border-radius: 16px;
+    padding: 22px 24px; position:relative;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+  }
+  .id-card::before{
+    content:'📌'; position:absolute; top:-16px; left:50%; transform:translateX(-50%);
+    font-size:26px; filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5));
+  }
+  .id-card label{
+    display:block; font-family:'Gaegu', sans-serif; font-size:16px; color: var(--teal);
+    margin-bottom:10px; text-align:center;
+  }
+  .id-row{ display:flex; gap:10px; }
+  #nameInput{
+    flex:1; background: #0d1230; border: 1px solid var(--line); border-radius:10px;
+    color: var(--cream); font-family:'Gaegu', sans-serif; font-size:18px;
+    padding: 12px 14px; outline:none; transition: border-color .15s, box-shadow .15s;
+  }
+  #nameInput:focus{ border-color: var(--gold); box-shadow: 0 0 0 3px rgba(255,214,102,0.15); }
+  #nameInput.shake{ animation: shake .35s ease; border-color: var(--pink); }
+  @keyframes shake{
+    0%,100%{ transform:translateX(0); } 20%{ transform:translateX(-6px); }
+    40%{ transform:translateX(6px); } 60%{ transform:translateX(-4px); } 80%{ transform:translateX(4px); }
+  }
+  .id-hint{
+    font-family:'Gaegu', sans-serif; font-size:13px; color: var(--sub);
+    min-height:18px; margin: 8px 2px 0; text-align:center;
+  }
+  .id-hint.warn{ color: var(--pink); }
+  .id-hint.ok{ color: var(--teal); }
+
+  /* ---------- Game grid ---------- */
+  .game-grid{
+    display:grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 44px;
+  }
+  @media (max-width: 760px){ .game-grid{ grid-template-columns: 1fr; } }
+
+  .game-card{
+    border-radius: 18px; border: 1px solid var(--line); overflow:hidden;
+    display:flex; flex-direction:column; text-align:left;
+    transition: transform .18s ease, box-shadow .18s ease;
+    cursor:pointer;
+  }
+  .game-card:hover{ transform: translateY(-4px); box-shadow: 0 16px 34px rgba(0,0,0,0.4); }
+
+  .card-preview{
+    height: 128px; position:relative; display:flex; align-items:center; justify-content:center;
+    font-size:46px;
+  }
+  .card-preview.fly{
+    background: radial-gradient(ellipse at 30% 20%, rgba(255,255,255,0.05), transparent 45%), linear-gradient(180deg, var(--board-bg), var(--board-bg-2));
+  }
+  .card-preview.star{
+    background: radial-gradient(circle at 30% 20%, #182055 0%, #0d1230 70%);
+  }
+  .card-preview .stars{ position:absolute; inset:0; }
+  .card-preview .dot{ position:absolute; width:3px; height:3px; border-radius:50%; background:#fff; opacity:0.6; }
+
+  .card-body{
+    background: linear-gradient(160deg, var(--bg-panel), var(--bg-panel-2));
+    padding: 18px 20px 20px; flex:1; display:flex; flex-direction:column; gap:8px;
+  }
+  .card-body h2{ font-family:'Gaegu', sans-serif; font-size:21px; margin:0; color: var(--cream); }
+  .card-body .tag{
+    display:inline-block; font-family:'JetBrains Mono', monospace; font-size:10.5px;
+    letter-spacing:1px; color: var(--board-bg-2); background: var(--gold);
+    border-radius:999px; padding:3px 10px; width:fit-content;
+  }
+  .card-body.star .tag{ color:#1a1300; background: var(--teal); }
+  .card-body p{ font-size:13px; color: var(--sub); line-height:1.6; margin:0; flex:1; }
+  .play-btn{
+    font-family:'Gaegu', sans-serif; font-size:17px; font-weight:700;
+    background: linear-gradient(135deg, var(--gold), #ffb84d); color:#241a00;
+    border:none; border-radius:999px; padding:11px 0; cursor:pointer;
+    box-shadow: 0 6px 16px rgba(255,214,102,0.28);
+  }
+
+  /* ---------- Leaderboard ---------- */
+  .lb-section h3.title{
+    font-family:'Gaegu', sans-serif; font-size:20px; color: var(--gold);
+    text-align:center; margin: 0 0 18px;
+  }
+  .lb-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+  @media (max-width:760px){ .lb-grid{ grid-template-columns:1fr; } }
+  .lb-panel{
+    background:#12173650; border:1px solid var(--line); border-radius:14px; padding:16px 18px;
+  }
+  .lb-panel h4{
+    font-family:'Gaegu', sans-serif; font-size:15.5px; margin:0 0 10px; color:var(--cream);
+    display:flex; align-items:center; gap:6px;
+  }
+  .lb-panel ol{ list-style:none; margin:0; padding:0; font-size:13.5px; }
+  .lb-panel li{
+    display:flex; justify-content:space-between; padding:6px 2px;
+    border-bottom:1px dashed var(--line);
+  }
+  .lb-panel li:last-child{ border-bottom:none; }
+  .lb-panel .rank{ width:24px; font-weight:700; color: var(--teal); }
+  .lb-panel .lb-name{ flex:1; text-align:left; padding-left:6px; }
+  .lb-panel .lb-score{ font-family:'JetBrains Mono', monospace; color: var(--gold); }
+  .lb-empty{ text-align:center; opacity:0.6; font-size:12.5px; padding:8px 0; }
+
+  .setup-note{
+    max-width:640px; margin: 30px auto 0; text-align:center;
+    font-size:12px; color: var(--sub); line-height:1.7;
+  }
+  .setup-note code{
+    background:#12173680; border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+    font-family:'JetBrains Mono', monospace;
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <div class="hero">
+    <div class="eyebrow">Math Mini-Game Arcade</div>
+    <h1>🎓 수학 게임 아케이드</h1>
+    <p>이름을 적고 게임을 골라 바로 시작해보세요. 기록은 자동으로 랭킹에 남아요.</p>
+  </div>
+
+  <div class="id-card">
+    <label for="nameInput">🙋 참가자 이름</label>
+    <div class="id-row">
+      <input type="text" id="nameInput" maxlength="12" placeholder="예: 민준">
+    </div>
+    <p class="id-hint" id="nameHint">이름을 입력하면 자동으로 저장돼요.</p>
+  </div>
+
+  <div class="game-grid">
+    <div class="game-card" data-target="game1.html">
+      <div class="card-preview fly">
+        <span>🪰🏏</span>
+      </div>
+      <div class="card-body">
+        <span class="tag">COORDINATE PLANE</span>
+        <h2>파리 잡기 좌표게임</h2>
+        <p>칠판 위 좌표평면에서 X, Y 슬라이더로 조준점을 맞춰 파리를 잡는 순발력 게임. 1분 동안 최대한 많이 잡아보세요.</p>
+        <button class="play-btn" data-target="game1.html">▶ 플레이하기</button>
+      </div>
+    </div>
+
+    <div class="game-card" data-target="game2.html">
+      <div class="card-preview star">
+        <div class="stars" id="cardStars"></div>
+        <span>🔭✨</span>
+      </div>
+      <div class="card-body star">
+        <span class="tag">DIRECT / INVERSE PROPORTION</span>
+        <h2>별자리 원정대</h2>
+        <p>정비례식과 반비례식 카드를 만들어 그래프를 별 위에 겹치면 별을 획득! 적은 카드로 많은 별을 모아 별자리를 완성하세요.</p>
+        <button class="play-btn" data-target="game2.html">▶ 플레이하기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="lb-section">
+    <h3 class="title">🏆 실시간 랭킹</h3>
+    <div class="lb-grid">
+      <div class="lb-panel">
+        <h4>🪰 파리 잡기 TOP 5</h4>
+        <ol id="lbFly"><li class="lb-empty">불러오는 중...</li></ol>
+      </div>
+      <div class="lb-panel">
+        <h4>✦ 별자리 원정대 TOP 5</h4>
+        <ol id="lbStar"><li class="lb-empty">불러오는 중...</li></ol>
+      </div>
+    </div>
+  </div>
+
+  <p class="setup-note" id="setupNote"></p>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-shared.js"></script>
+<script>
+(function(){
+  const nameInput = document.getElementById('nameInput');
+  const nameHint = document.getElementById('nameHint');
+  const lbFly = document.getElementById('lbFly');
+  const lbStar = document.getElementById('lbStar');
+  const setupNote = document.getElementById('setupNote');
+
+  // 배경 별 장식 (별자리 카드 프리뷰)
+  const starsWrap = document.getElementById('cardStars');
+  for(let i=0;i<14;i++){
+    const d = document.createElement('div');
+    d.className = 'dot';
+    d.style.left = (Math.random()*100) + '%';
+    d.style.top = (Math.random()*100) + '%';
+    d.style.opacity = (0.3 + Math.random()*0.6).toFixed(2);
+    starsWrap.appendChild(d);
+  }
+
+  // 이름 불러오기 / 저장
+  nameInput.value = getPlayerName();
+  nameInput.addEventListener('input', ()=>{
+    setPlayerName(nameInput.value);
+    if(nameInput.value.trim()){
+      nameHint.textContent = `"${nameInput.value.trim()}" 님으로 저장됐어요. 이제 게임을 골라보세요!`;
+      nameHint.className = 'id-hint ok';
+    } else {
+      nameHint.textContent = '이름을 입력하면 자동으로 저장돼요.';
+      nameHint.className = 'id-hint';
+    }
+  });
+  if(nameInput.value.trim()){
+    nameHint.textContent = `"${nameInput.value.trim()}" 님, 다시 오셨네요! 게임을 골라보세요.`;
+    nameHint.className = 'id-hint ok';
+  }
+
+  function goToGame(target){
+    const name = nameInput.value.trim();
+    if(!name){
+      nameInput.classList.remove('shake');
+      void nameInput.offsetWidth;
+      nameInput.classList.add('shake');
+      nameInput.focus();
+      nameHint.textContent = '먼저 이름을 입력해주세요!';
+      nameHint.className = 'id-hint warn';
+      return;
+    }
+    setPlayerName(name);
+    location.href = target;
+  }
+
+  document.querySelectorAll('.play-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      goToGame(btn.dataset.target);
+    });
+  });
+  document.querySelectorAll('.game-card').forEach(card=>{
+    card.addEventListener('click', ()=> goToGame(card.dataset.target));
+  });
+
+  function renderList(listEl, rows){
+    if(!rows || rows.length === 0){
+      listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
+      return;
+    }
+    listEl.innerHTML = rows.map((r,i)=>
+      `<li><span class="rank">${i+1}</span><span class="lb-name">${(r.name||'익명')}</span><span class="lb-score">${r.score}점</span></li>`
+    ).join('');
+  }
+
+  fetchTopScores('fly', 5).then(rows => renderList(lbFly, rows));
+  fetchTopScores('star', 5).then(rows => renderList(lbStar, rows));
+
+  if(!firebaseReady){
+    setupNote.innerHTML = '⚙️ 아직 Firebase가 연결되지 않았어요. <code>firebase-shared.js</code> 파일 안의 <code>firebaseConfig</code> 값을 본인의 Firebase 프로젝트 설정으로 채워주면 점수 저장과 랭킹이 활성화됩니다.';
+  }
+})();
+</script>
+</body>
+</html>
