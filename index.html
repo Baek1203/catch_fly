@@ -216,11 +216,11 @@
     <h3 class="title">🏆 실시간 랭킹</h3>
     <div class="lb-grid">
       <div class="lb-panel">
-        <h4>🪰 파리 잡기 TOP 5</h4>
+        <h4>🪰 파리 잡기 TOP 20</h4>
         <ol id="lbFly"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
       <div class="lb-panel">
-        <h4>✦ 별자리 원정대 TOP 5</h4>
+        <h4>✦ 별자리 원정대 TOP 20</h4>
         <ol id="lbStar"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
     </div>
@@ -293,7 +293,12 @@
     card.addEventListener('click', ()=> goToGame(card.dataset.target));
   });
 
-  function renderList(listEl, rows){
+  function renderList(listEl, result){
+    if(!result || !result.ok){
+      listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
+      return;
+    }
+    const rows = result.rows;
     if(!rows || rows.length === 0){
       listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
       return;
@@ -303,8 +308,8 @@
     ).join('');
   }
 
-  fetchTopScores('fly', 5).then(rows => renderList(lbFly, rows));
-  fetchTopScores('star', 5).then(rows => renderList(lbStar, rows));
+  fetchTopScores('fly', 20).then(res => renderList(lbFly, res));
+  fetchTopScores('star', 20).then(res => renderList(lbStar, res));
 
   if(!firebaseReady){
     setupNote.innerHTML = '⚙️ 아직 Firebase가 연결되지 않았어요. <code>firebase-shared.js</code> 파일 안의 <code>firebaseConfig</code> 값을 본인의 Firebase 프로젝트 설정으로 채워주면 점수 저장과 랭킹이 활성화됩니다.';
