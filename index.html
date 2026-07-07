@@ -293,12 +293,25 @@
     card.addEventListener('click', ()=> goToGame(card.dataset.target));
   });
 
+  // 같은 이름이 여러 번 등장하면 그 중 최고 점수만 남기기
+  function dedupeByBestScore(rows){
+    const bestByName = new Map();
+    rows.forEach(r=>{
+      const key = (r.name || '익명').trim();
+      const cur = bestByName.get(key);
+      if(!cur || (Number(r.score)||0) > (Number(cur.score)||0)){
+        bestByName.set(key, r);
+      }
+    });
+    return Array.from(bestByName.values()).sort((a,b)=> (Number(b.score)||0) - (Number(a.score)||0));
+  }
+
   function renderList(listEl, result){
     if(!result || !result.ok){
       listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
       return;
     }
-    const rows = result.rows;
+    const rows = dedupeByBestScore(result.rows || []).slice(0, 20);
     if(!rows || rows.length === 0){
       listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
       return;
@@ -308,8 +321,9 @@
     ).join('');
   }
 
-  fetchTopScores('fly', 20).then(res => renderList(lbFly, res));
-  fetchTopScores('star', 20).then(res => renderList(lbStar, res));
+  // 중복 제거 전 넉넉히 가져와서(최대 200개) 이름별 최고기록만 추린 뒤 상위 20명을 보여줌
+  fetchTopScores('fly', 200).then(res => renderList(lbFly, res));
+  fetchTopScores('star', 200).then(res => renderList(lbStar, res));
 
   if(!firebaseReady){
     setupNote.innerHTML = '⚙️ 아직 Firebase가 연결되지 않았어요. <code>firebase-shared.js</code> 파일 안의 <code>firebaseConfig</code> 값을 본인의 Firebase 프로젝트 설정으로 채워주면 점수 저장과 랭킹이 활성화됩니다.';
