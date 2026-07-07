@@ -1091,15 +1091,27 @@
     });
   }
 
+  function dedupeByBestScore(rows){
+    const bestByName = new Map();
+    rows.forEach(r=>{
+      const key = (r.name || '익명').trim();
+      const cur = bestByName.get(key);
+      if(!cur || (Number(r.score)||0) > (Number(cur.score)||0)){
+        bestByName.set(key, r);
+      }
+    });
+    return Array.from(bestByName.values()).sort((a,b)=> (Number(b.score)||0) - (Number(a.score)||0));
+  }
+
   function renderLeaderboard(listEl){
     if(!listEl) return;
     listEl.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
-    fetchTopScores('star', 20).then(result=>{
+    fetchTopScores('star', 200).then(result=>{
       if(!result || !result.ok){
         listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
         return;
       }
-      const rows = result.rows;
+      const rows = dedupeByBestScore(result.rows || []).slice(0, 20);
       if(!rows || rows.length === 0){
         listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
         return;
