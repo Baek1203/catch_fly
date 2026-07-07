@@ -180,7 +180,7 @@
   <div class="id-card">
     <label for="nameInput">🙋 참가자 이름</label>
     <div class="id-row">
-      <input type="text" id="nameInput" maxlength="12" placeholder="예: OO중학교 김철수">
+      <input type="text" id="nameInput" maxlength="12" placeholder="예: 민준">
     </div>
     <p class="id-hint" id="nameHint">이름을 입력하면 자동으로 저장돼요.</p>
   </div>
@@ -220,7 +220,7 @@
         <ol id="lbFly"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
       <div class="lb-panel">
-        <h4>✦ 별자리 원정대 TOP 20</h4>
+        <h4>✦ 별자리 원정대 (10,000점 이상)</h4>
         <ol id="lbStar"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
     </div>
@@ -294,26 +294,23 @@
   });
 
   // 같은 이름이 여러 번 등장하면 그 중 최고 점수만 남기기
-  function dedupeByBestScore(rows){
-    const bestByName = new Map();
-    rows.forEach(r=>{
-      const key = (r.name || '익명').trim();
-      const cur = bestByName.get(key);
-      if(!cur || (Number(r.score)||0) > (Number(cur.score)||0)){
-        bestByName.set(key, r);
-      }
-    });
-    return Array.from(bestByName.values()).sort((a,b)=> (Number(b.score)||0) - (Number(a.score)||0));
-  }
-
-  function renderList(listEl, result){
+  function renderRanked(listEl, result, options){
+    options = options || {};
     if(!result || !result.ok){
       listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
       return;
     }
-    const rows = dedupeByBestScore(result.rows || []).slice(0, 20);
+    let rows = dedupeByBestScore(result.rows || []); // 이름별 최고 기록 + 동점자는 기록 횟수순
+    if(options.minScore != null){
+      rows = rows.filter(r => (Number(r.score) || 0) >= options.minScore);
+    }
+    if(options.limit != null){
+      rows = rows.slice(0, options.limit);
+    }
     if(!rows || rows.length === 0){
-      listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
+      listEl.innerHTML = options.minScore != null
+        ? `<li class="lb-empty">아직 ${options.minScore.toLocaleString()}점 이상 기록이 없어요.</li>`
+        : '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
       return;
     }
     listEl.innerHTML = rows.map((r,i)=>
@@ -321,9 +318,10 @@
     ).join('');
   }
 
-  // 중복 제거 전 넉넉히 가져와서(최대 200개) 이름별 최고기록만 추린 뒤 상위 20명을 보여줌
-  fetchTopScores('fly', 200).then(res => renderList(lbFly, res));
-  fetchTopScores('star', 200).then(res => renderList(lbStar, res));
+  // 파리 잡기: 상위 20명 (동점자는 기록 횟수 많은 순)
+  fetchTopScores('fly', 500).then(res => renderRanked(lbFly, res, { limit: 20 }));
+  // 별자리 원정대: 10,000점 이상인 기록 전부 (동점자는 기록 횟수 많은 순)
+  fetchTopScores('star', 5000).then(res => renderRanked(lbStar, res, { minScore: 10000 }));
 
   if(!firebaseReady){
     setupNote.innerHTML = '⚙️ 아직 Firebase가 연결되지 않았어요. <code>firebase-shared.js</code> 파일 안의 <code>firebaseConfig</code> 값을 본인의 Firebase 프로젝트 설정으로 채워주면 점수 저장과 랭킹이 활성화됩니다.';

@@ -92,14 +92,46 @@ async function saveScore(gameId, name, score, extra = {}) {
   }
 }
 
-/* ---------------- 랭킹(top N) 조회 ----------------
+/* ---------------- 이름별 최고 기록 + 동점자 처리 ----------------
+   같은 이름으로 여러 번 기록이 저장돼 있으면, 그 중 "가장 높은 점수"
+   1건만 순위표에 남기고 나머지는 접습니다. 이때 점수가 같은 동점자는
+   "그 이름으로 저장된 전체 기록 수(총 플레이 횟수)"가 많은 사람이
+   더 위 순위가 되도록 정렬합니다.
+   반환값: 각 이름의 최고 기록 객체에 __count(총 기록 수)가 더해진 배열,
+   점수 내림차순 -> 동점이면 __count 내림차순으로 정렬됩니다.
+------------------------------------------------------------------ */
+function dedupeByBestScore(rows){
+  const byName = new Map(); // name -> { best: 최고 기록 문서, count: 총 기록 수 }
+  (rows || []).forEach(r=>{
+    const key = (r.name || '익명').trim();
+    const score = Number(r.score) || 0;
+    const entry = byName.get(key);
+    if(!entry){
+      byName.set(key, { best: r, count: 1 });
+    } else {
+      entry.count += 1;
+      if(score > (Number(entry.best.score) || 0)){
+        entry.best = r;
+      }
+    }
+  });
+  return Array.from(byName.values())
+    .map(entry => ({ ...entry.best, __count: entry.count }))
+    .sort((a, b)=>{
+      const sb = Number(b.score) || 0, sa = Number(a.score) || 0;
+      if(sb !== sa) return sb - sa;
+      return (b.__count || 0) - (a.__count || 0);
+    });
+}
+
+/* ---------------- 랭킹 조회 (전체) ----------------
    where(game==...) + orderBy(score desc) 조합은 Firestore에서
    "복합 색인"을 요구할 수 있어, 색인을 미리 만들어두지 않으면
    조회가 조용히 실패해서 랭킹이 안 보이는 문제가 생길 수 있습니다.
    이를 피하기 위해 orderBy 없이 game으로만 필터링해서 가져온 뒤
    점수 정렬은 브라우저(클라이언트)에서 처리합니다.
    -> 이 방식은 별도의 색인 생성 없이 바로 동작합니다.
-   반환값: { ok: boolean, rows: 배열, reason?: 실패 사유 }
+   반환값: { ok: boolean, rows: 배열(점수 내림차순, 최대 limitN개), reason?: 실패 사유 }
 ---------------------------------------------------- */
 async function fetchTopScores(gameId, limitN = 20) {
   if (!firebaseReady) {

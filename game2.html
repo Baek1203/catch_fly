@@ -405,7 +405,7 @@
       <button class="big-btn" id="startBtn">탐사 시작하기 🚀</button>
 
       <div class="leaderboard" id="lbStart">
-        <h3>🏆 별자리 원정대 랭킹 TOP 20</h3>
+        <h3>🏆 별자리 원정대 랭킹 (10,000점 이상)</h3>
         <ol id="lbStartList"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
     </div>
@@ -466,7 +466,7 @@
         <tbody id="resultsTableBody"></tbody>
       </table>
       <div class="leaderboard" id="lbResult">
-        <h3>🏆 별자리 원정대 랭킹 TOP 20</h3>
+        <h3>🏆 별자리 원정대 랭킹 (10,000점 이상)</h3>
         <ol id="lbResultList"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
 
@@ -1091,29 +1091,19 @@
     });
   }
 
-  function dedupeByBestScore(rows){
-    const bestByName = new Map();
-    rows.forEach(r=>{
-      const key = (r.name || '익명').trim();
-      const cur = bestByName.get(key);
-      if(!cur || (Number(r.score)||0) > (Number(cur.score)||0)){
-        bestByName.set(key, r);
-      }
-    });
-    return Array.from(bestByName.values()).sort((a,b)=> (Number(b.score)||0) - (Number(a.score)||0));
-  }
-
   function renderLeaderboard(listEl){
     if(!listEl) return;
     listEl.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
-    fetchTopScores('star', 200).then(result=>{
+    fetchTopScores('star', 5000).then(result=>{
       if(!result || !result.ok){
         listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
         return;
       }
-      const rows = dedupeByBestScore(result.rows || []).slice(0, 20);
+      // 이름별 최고 기록만 남기고(동점자는 기록 횟수 많은 순, firebase-shared.js),
+      // 10,000점 이상인 기록만 전부 표시
+      const rows = dedupeByBestScore(result.rows || []).filter(r => (Number(r.score)||0) >= 10000);
       if(!rows || rows.length === 0){
-        listEl.innerHTML = '<li class="lb-empty">아직 기록이 없어요. 첫 기록의 주인공이 되어보세요!</li>';
+        listEl.innerHTML = '<li class="lb-empty">아직 10,000점 이상 기록이 없어요.</li>';
         return;
       }
       listEl.innerHTML = rows.map((r, i)=>
