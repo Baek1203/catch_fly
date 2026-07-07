@@ -180,7 +180,7 @@
   <div class="id-card">
     <label for="nameInput">🙋 참가자 이름</label>
     <div class="id-row">
-      <input type="text" id="nameInput" maxlength="12" placeholder="예: 민준">
+      <input type="text" id="nameInput" maxlength="12" placeholder="예: OO중학교 김철수">
     </div>
     <p class="id-hint" id="nameHint">이름을 입력하면 자동으로 저장돼요.</p>
   </div>
@@ -216,7 +216,7 @@
     <h3 class="title">🏆 실시간 랭킹</h3>
     <div class="lb-grid">
       <div class="lb-panel">
-        <h4>🪰 파리 잡기 TOP 20</h4>
+        <h4>🪰 파리 잡기 (10점 이상)</h4>
         <ol id="lbFly"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
       <div class="lb-panel">
@@ -318,8 +318,8 @@
     ).join('');
   }
 
-  // 파리 잡기: 상위 20명 (동점자는 기록 횟수 많은 순)
-  fetchTopScores('fly', 500).then(res => renderRanked(lbFly, res, { limit: 20 }));
+  // 파리 잡기: 10점 이상인 기록 전부 (동점자는 기록 횟수 많은 순)
+  fetchTopScores('fly', 500).then(res => renderRanked(lbFly, res, { minScore: 10 }));
   // 별자리 원정대: 10,000점 이상인 기록 전부 (동점자는 기록 횟수 많은 순)
   fetchTopScores('star', 5000).then(res => renderRanked(lbStar, res, { minScore: 10000 }));
 
