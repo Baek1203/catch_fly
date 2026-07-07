@@ -1081,9 +1081,8 @@
         listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
         return;
       }
-      // 이름별 최고 기록만 남기고(동점자는 기록 횟수 많은 순, firebase-shared.js),
-      // 10점 이상인 기록만 전부 표시
-      const rows = dedupeByBestScore(result.rows || []).filter(r => (Number(r.score)||0) >= 10);
+      // leaderboard 컬렉션에 이미 이름별 1건(최고점수+횟수)만 저장돼 있음. 10점 이상만 표시
+      const rows = (result.rows || []).filter(r => (Number(r.score)||0) >= 10);
       if(!rows || rows.length === 0){
         listEl.innerHTML = '<li class="lb-empty">아직 10점 이상 기록이 없어요.</li>';
         return;

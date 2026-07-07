@@ -14,21 +14,35 @@
       (file:// 로 그냥 더블클릭하면 브라우저 보안 정책상 오류가 날 수 있어요.
        VSCode의 Live Server 확장, 또는 `python -m http.server` 등을 이용하세요.)
 
+   ▶ 데이터 구조 (읽기 사용량을 줄이기 위한 설계)
+   플레이할 때마다 새 문서를 쌓지 않고, "게임+이름"당 문서 1개만 유지하는
+   `leaderboard` 컬렉션을 사용합니다. 문서 안에는 순위에 필요한 값
+   (최고 점수 score, 총 플레이 횟수 count)이 이미 계산되어 저장돼 있어요.
+     - 문서 ID: `${game}__${이름}` (예: "fly__민준")
+     - 필드: game, name, score(최고 점수), count(총 플레이 횟수), updatedAt, (선택) 부가 통계
+   점수를 저장할 때는 Firestore 트랜잭션으로 기존 문서를 읽어
+   "최고 점수"와 "총 횟수"를 갱신합니다(문서 1개 읽기 + 쓰기).
+   랭킹을 불러올 때는 이 컬렉션만 조회하면 되므로, 한 사람이 게임을
+   몇 번을 다시 하든 랭킹 조회 시 읽는 문서 수는 "실제 참여 인원 수"만큼만
+   늘어납니다 (예전처럼 "총 플레이 횟수"만큼 늘어나지 않음).
+
    ▶ Firestore 보안 규칙 예시 (콘솔 > Firestore Database > 규칙)
    -----------------------------------------------------------
    rules_version = '2';
    service cloud.firestore {
      match /databases/{database}/documents {
-       match /scores/{scoreId} {
+       match /leaderboard/{entryId} {
          allow read: if true;                 // 누구나 랭킹 조회 가능
-         allow create: if request.resource.data.name is string
-                        && request.resource.data.game in ['fly', 'star']
-                        && request.resource.data.score is number;
-         allow update, delete: if false;      // 점수 수정/삭제는 막음
+         allow write: if request.resource.data.name is string
+                       && request.resource.data.game in ['fly', 'star']
+                       && request.resource.data.score is number
+                       && request.resource.data.count is number;
        }
      }
    }
    -----------------------------------------------------------
+   (기존에 `scores` 컬렉션을 이미 쓰고 계셨다면, 그 컬렉션은 더 이상
+    사용하지 않으니 콘솔에서 그냥 두거나 삭제하셔도 됩니다.)
 
    ▶ 인덱스 안내
    랭킹 조회는 색인(인덱스) 없이도 바로 동작하도록 구현했습니다.
@@ -70,20 +84,54 @@ function setPlayerName(name) {
   localStorage.setItem(PLAYER_NAME_KEY, (name || '').trim());
 }
 
-/* ---------------- 점수 저장 ---------------- */
-// gameId: 'fly' (파리 잡기) | 'star' (별자리 원정대)
+/* ---------------- 문서 ID로 안전하게 쓸 수 있게 이름 정리 ---------------- */
+function sanitizeNameForDocId(name) {
+  const clean = (name || '익명').trim().slice(0, 12) || '익명';
+  // Firestore 문서 ID에 쓸 수 없는 문자(/)만 치환
+  return clean.replace(/\//g, '_');
+}
+
+/* ---------------- 점수 저장 (게임+이름당 문서 1개로 집계) ----------------
+   기존처럼 플레이마다 새 문서를 추가하지 않고, 같은 사람(name)의 문서
+   1개를 트랜잭션으로 갱신합니다: 최고 점수(score)와 총 플레이 횟수(count)만
+   저장해두면, 랭킹을 불러올 때 사람 수만큼만 읽으면 되어 읽기 사용량이
+   크게 줄어듭니다.
+   extra는 "최고 기록을 세운 판"의 부가 통계(예: 연속기록, 명중률, 난이도)만
+   갱신됩니다.
+------------------------------------------------------------------ */
 async function saveScore(gameId, name, score, extra = {}) {
   if (!firebaseReady) {
     console.warn('[firebase-shared.js] Firebase 미설정으로 점수를 저장하지 않았습니다.');
     return { ok: false, reason: 'firebase-not-configured' };
   }
+  const cleanName = sanitizeNameForDocId(name);
+  const newScore = Math.max(0, Math.round(Number(score) || 0));
+  const ref = db.collection('leaderboard').doc(`${gameId}__${cleanName}`);
+
   try {
-    await db.collection('scores').add({
-      game: gameId,
-      name: (name || '익명').slice(0, 12),
-      score: Math.max(0, Math.round(Number(score) || 0)),
-      ...extra,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) {
+        tx.set(ref, {
+          game: gameId,
+          name: cleanName,
+          score: newScore,
+          count: 1,
+          ...extra,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } else {
+        const data = snap.data();
+        const prevScore = Number(data.score) || 0;
+        const prevCount = Number(data.count) || 0;
+        const isNewBest = newScore >= prevScore;
+        tx.update(ref, {
+          score: Math.max(prevScore, newScore),
+          count: prevCount + 1,
+          ...(isNewBest ? extra : {}), // 부가 통계는 최고 기록 판 기준으로만 갱신
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
     });
     return { ok: true };
   } catch (e) {
@@ -92,50 +140,18 @@ async function saveScore(gameId, name, score, extra = {}) {
   }
 }
 
-/* ---------------- 이름별 최고 기록 + 동점자 처리 ----------------
-   같은 이름으로 여러 번 기록이 저장돼 있으면, 그 중 "가장 높은 점수"
-   1건만 순위표에 남기고 나머지는 접습니다. 이때 점수가 같은 동점자는
-   "그 이름으로 저장된 전체 기록 수(총 플레이 횟수)"가 많은 사람이
-   더 위 순위가 되도록 정렬합니다.
-   반환값: 각 이름의 최고 기록 객체에 __count(총 기록 수)가 더해진 배열,
-   점수 내림차순 -> 동점이면 __count 내림차순으로 정렬됩니다.
------------------------------------------------------------------- */
-function dedupeByBestScore(rows){
-  const byName = new Map(); // name -> { best: 최고 기록 문서, count: 총 기록 수 }
-  (rows || []).forEach(r=>{
-    const key = (r.name || '익명').trim();
-    const score = Number(r.score) || 0;
-    const entry = byName.get(key);
-    if(!entry){
-      byName.set(key, { best: r, count: 1 });
-    } else {
-      entry.count += 1;
-      if(score > (Number(entry.best.score) || 0)){
-        entry.best = r;
-      }
-    }
-  });
-  return Array.from(byName.values())
-    .map(entry => ({ ...entry.best, __count: entry.count }))
-    .sort((a, b)=>{
-      const sb = Number(b.score) || 0, sa = Number(a.score) || 0;
-      if(sb !== sa) return sb - sa;
-      return (b.__count || 0) - (a.__count || 0);
-    });
-}
-
 /* ---------------- 동점자 처리된 순위 매기기 ----------------
-   점수와 __count(기록 횟수)가 모두 같은 사람들은 공동 순위로 처리하고,
+   점수와 count(기록 횟수)가 모두 같은 사람들은 공동 순위로 처리하고,
    그다음 순위는 공동 순위 인원 수만큼 건너뜁니다.
    예: 1,2,3위가 모두 점수·기록횟수 동일 -> 셋 다 1위, 그다음은 4위.
-   dedupeByBestScore로 이미 정렬된 배열을 넣어주세요.
+   fetchTopScores로 이미 정렬된 배열을 넣어주세요.
    반환값: [{ row, rank }, ...] 형태의 배열
 ------------------------------------------------------------------ */
 function assignRanks(rows){
   let lastRank = 0;
   let lastKey = null;
   return (rows || []).map((r, i)=>{
-    const key = (Number(r.score) || 0) + '|' + (Number(r.__count) || 0);
+    const key = (Number(r.score) || 0) + '|' + (Number(r.count) || 0);
     if(key !== lastKey){
       lastRank = i + 1;
       lastKey = key;
@@ -144,25 +160,27 @@ function assignRanks(rows){
   });
 }
 
-/* ---------------- 랭킹 조회 (전체) ----------------
-   where(game==...) + orderBy(score desc) 조합은 Firestore에서
-   "복합 색인"을 요구할 수 있어, 색인을 미리 만들어두지 않으면
-   조회가 조용히 실패해서 랭킹이 안 보이는 문제가 생길 수 있습니다.
-   이를 피하기 위해 orderBy 없이 game으로만 필터링해서 가져온 뒤
-   점수 정렬은 브라우저(클라이언트)에서 처리합니다.
-   -> 이 방식은 별도의 색인 생성 없이 바로 동작합니다.
-   반환값: { ok: boolean, rows: 배열(점수 내림차순, 최대 limitN개), reason?: 실패 사유 }
+/* ---------------- 랭킹 조회 ----------------
+   leaderboard 컬렉션은 "게임+이름"당 문서가 1개뿐이라, 총 플레이 횟수가
+   아무리 많아도 실제 참여 인원 수만큼만 문서를 읽습니다.
+   where(game==...) 단일 필드 필터만 사용해 별도 색인 없이 바로 동작하고,
+   정렬(점수 desc -> 기록횟수 desc)은 브라우저에서 처리합니다.
+   반환값: { ok: boolean, rows: 배열(정렬 완료, 최대 limitN개), reason?: 실패 사유 }
 ---------------------------------------------------- */
 async function fetchTopScores(gameId, limitN = 20) {
   if (!firebaseReady) {
     return { ok: false, rows: [], reason: 'firebase-not-configured' };
   }
   try {
-    const snap = await db.collection('scores')
+    const snap = await db.collection('leaderboard')
       .where('game', '==', gameId)
       .get();
     const rows = snap.docs.map(d => d.data());
-    rows.sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));
+    rows.sort((a, b) => {
+      const sb = Number(b.score) || 0, sa = Number(a.score) || 0;
+      if (sb !== sa) return sb - sa;
+      return (Number(b.count) || 0) - (Number(a.count) || 0);
+    });
     return { ok: true, rows: rows.slice(0, limitN) };
   } catch (e) {
     console.error('[firebase-shared.js] 랭킹 조회 실패:', e);

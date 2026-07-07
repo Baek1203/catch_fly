@@ -300,7 +300,7 @@
       listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
       return;
     }
-    let rows = dedupeByBestScore(result.rows || []); // 이름별 최고 기록 + 동점자는 기록 횟수순
+    let rows = result.rows || []; // leaderboard 컬렉션에 이미 이름별 1건(최고점수+횟수)만 저장돼 있음
     if(options.minScore != null){
       rows = rows.filter(r => (Number(r.score) || 0) >= options.minScore);
     }
