@@ -16,12 +16,14 @@
 
    ▶ 데이터 구조 (읽기 사용량을 줄이기 위한 설계)
    플레이할 때마다 새 문서를 쌓지 않고, "게임+이름"당 문서 1개만 유지하는
-   `leaderboard` 컬렉션을 사용합니다. 문서 안에는 순위에 필요한 값
-   (최고 점수 score, 총 플레이 횟수 count)이 이미 계산되어 저장돼 있어요.
+   `leaderboard` 컬렉션을 사용합니다. 문서 안에는 순위에 필요한 값이
+   이미 계산되어 저장돼 있어요.
      - 문서 ID: `${game}__${이름}` (예: "fly__민준")
-     - 필드: game, name, score(최고 점수), count(총 플레이 횟수), updatedAt, (선택) 부가 통계
+     - score: 이 사람의 최고 점수
+     - count: 그 "최고 점수"를 기록한 횟수 (전체 플레이 횟수가 아님)
+     - 그 외: updatedAt, (선택) 부가 통계
    점수를 저장할 때는 Firestore 트랜잭션으로 기존 문서를 읽어
-   "최고 점수"와 "총 횟수"를 갱신합니다(문서 1개 읽기 + 쓰기).
+   "최고 점수"와 "그 최고 점수를 기록한 횟수"를 갱신합니다(문서 1개 읽기 + 쓰기).
    랭킹을 불러올 때는 이 컬렉션만 조회하면 되므로, 한 사람이 게임을
    몇 번을 다시 하든 랭킹 조회 시 읽는 문서 수는 "실제 참여 인원 수"만큼만
    늘어납니다 (예전처럼 "총 플레이 횟수"만큼 늘어나지 않음).
@@ -93,9 +95,12 @@ function sanitizeNameForDocId(name) {
 
 /* ---------------- 점수 저장 (게임+이름당 문서 1개로 집계) ----------------
    기존처럼 플레이마다 새 문서를 추가하지 않고, 같은 사람(name)의 문서
-   1개를 트랜잭션으로 갱신합니다: 최고 점수(score)와 총 플레이 횟수(count)만
-   저장해두면, 랭킹을 불러올 때 사람 수만큼만 읽으면 되어 읽기 사용량이
-   크게 줄어듭니다.
+   1개를 트랜잭션으로 갱신합니다.
+   - score: 이 사람의 "최고 점수"
+   - count: 그 "최고 점수"를 기록한 횟수 (전체 플레이 횟수가 아님!)
+     예) 10점 -> 15점 -> 15점 -> 12점 순으로 플레이하면 최종 score=15, count=2
+         (마지막 12점은 최고 기록을 못 넘었으므로 count에 영향 없음)
+   랭킹을 불러올 때는 이 컬렉션만 조회하면 되어, 사람 수만큼만 읽으면 됩니다.
    extra는 "최고 기록을 세운 판"의 부가 통계(예: 연속기록, 명중률, 난이도)만
    갱신됩니다.
 ------------------------------------------------------------------ */
@@ -124,13 +129,22 @@ async function saveScore(gameId, name, score, extra = {}) {
         const data = snap.data();
         const prevScore = Number(data.score) || 0;
         const prevCount = Number(data.count) || 0;
-        const isNewBest = newScore >= prevScore;
-        tx.update(ref, {
-          score: Math.max(prevScore, newScore),
-          count: prevCount + 1,
-          ...(isNewBest ? extra : {}), // 부가 통계는 최고 기록 판 기준으로만 갱신
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        if (newScore > prevScore) {
+          // 새로운 최고 기록 -> 횟수는 1부터 다시 셈
+          tx.update(ref, {
+            score: newScore,
+            count: 1,
+            ...extra,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        } else if (newScore === prevScore) {
+          // 기존 최고 기록과 동일 -> 그 기록을 세운 횟수만 +1
+          tx.update(ref, {
+            count: prevCount + 1,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+        // newScore < prevScore: 최고 기록을 못 넘었으므로 score/count 변경 없음
       }
     });
     return { ok: true };
@@ -141,9 +155,9 @@ async function saveScore(gameId, name, score, extra = {}) {
 }
 
 /* ---------------- 동점자 처리된 순위 매기기 ----------------
-   점수와 count(기록 횟수)가 모두 같은 사람들은 공동 순위로 처리하고,
-   그다음 순위는 공동 순위 인원 수만큼 건너뜁니다.
-   예: 1,2,3위가 모두 점수·기록횟수 동일 -> 셋 다 1위, 그다음은 4위.
+   점수와 count(그 최고 점수를 기록한 횟수)가 모두 같은 사람들은 공동 순위로
+   처리하고, 그다음 순위는 공동 순위 인원 수만큼 건너뜁니다.
+   예: 1,2,3위가 모두 점수·최고기록 횟수 동일 -> 셋 다 1위, 그다음은 4위.
    fetchTopScores로 이미 정렬된 배열을 넣어주세요.
    반환값: [{ row, rank }, ...] 형태의 배열
 ------------------------------------------------------------------ */
