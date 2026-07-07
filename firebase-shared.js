@@ -124,6 +124,26 @@ function dedupeByBestScore(rows){
     });
 }
 
+/* ---------------- 동점자 처리된 순위 매기기 ----------------
+   점수와 __count(기록 횟수)가 모두 같은 사람들은 공동 순위로 처리하고,
+   그다음 순위는 공동 순위 인원 수만큼 건너뜁니다.
+   예: 1,2,3위가 모두 점수·기록횟수 동일 -> 셋 다 1위, 그다음은 4위.
+   dedupeByBestScore로 이미 정렬된 배열을 넣어주세요.
+   반환값: [{ row, rank }, ...] 형태의 배열
+------------------------------------------------------------------ */
+function assignRanks(rows){
+  let lastRank = 0;
+  let lastKey = null;
+  return (rows || []).map((r, i)=>{
+    const key = (Number(r.score) || 0) + '|' + (Number(r.__count) || 0);
+    if(key !== lastKey){
+      lastRank = i + 1;
+      lastKey = key;
+    }
+    return { row: r, rank: lastRank };
+  });
+}
+
 /* ---------------- 랭킹 조회 (전체) ----------------
    where(game==...) + orderBy(score desc) 조합은 Firestore에서
    "복합 색인"을 요구할 수 있어, 색인을 미리 만들어두지 않으면

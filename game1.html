@@ -1088,8 +1088,8 @@
         listEl.innerHTML = '<li class="lb-empty">아직 10점 이상 기록이 없어요.</li>';
         return;
       }
-      listEl.innerHTML = rows.map((r, i)=>
-        `<li><span class="rank">${i+1}</span><span class="lb-name">${(r.name||'익명')}</span><span class="lb-score">${r.score}점</span></li>`
+      listEl.innerHTML = assignRanks(rows).map(({row:r, rank})=>
+        `<li><span class="rank">${rank}</span><span class="lb-name">${(r.name||'익명')}</span><span class="lb-score">${r.score}점</span></li>`
       ).join('');
     });
   }
