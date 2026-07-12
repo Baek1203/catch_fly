@@ -580,6 +580,15 @@
   .leaderboard .lb-name{ flex:1; text-align:left; padding-left:6px; }
   .leaderboard .lb-score{ font-family:'JetBrains Mono', monospace; color: var(--chalk-yellow); }
   .leaderboard .lb-empty{ text-align:center; opacity:0.6; font-size:13px; padding: 6px 0; }
+  .lb-scope-toggle{ display:flex; justify-content:center; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+  .lb-scope-btn{
+    font-family:'Gaegu', sans-serif; font-size:12.5px; color: var(--chalk-white);
+    background: rgba(245,242,230,0.06); border:1px solid rgba(245,242,230,0.25);
+    border-radius:999px; padding:3px 11px; cursor:pointer; opacity:0.75;
+  }
+  .lb-scope-btn.active{ background: var(--chalk-yellow); color:#241a00; opacity:1; font-weight:700; border-color:transparent; }
+  .lb-period-note{ text-align:center; font-family:'JetBrains Mono', monospace; font-size:11px; color: var(--chalk-blue); margin: 0 0 8px; opacity:0.85; }
+  .lb-update-note{ text-align:center; font-size:10px; color: var(--chalk-white); opacity:0.55; margin: 0 0 6px; line-height:1.5; }
 </style>
 </head>
 <body>
@@ -607,6 +616,13 @@
       <button id="startBtn" class="big-btn">▶ 시작하기</button>
       <div class="leaderboard" id="lbStart">
         <h3>🏆 파리 잡기 랭킹 (10점 이상)</h3>
+        <div class="lb-scope-toggle" data-target="lbStartList">
+          <button class="lb-scope-btn active" data-scope="weekly">📅 주간</button>
+          <button class="lb-scope-btn" data-scope="semester">🏫 학기</button>
+          <button class="lb-scope-btn" data-scope="all">🌟 전체</button>
+        </div>
+        <p class="lb-update-note">📅 주간: 매주 월요일 오전 9시 갱신 · 🏫 학기: 3월 1일 / 8월 1일 갱신</p>
+        <p class="lb-period-note" id="lbStartPeriodNote"></p>
         <ol id="lbStartList"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
     </div>
@@ -702,6 +718,13 @@
 
       <div class="leaderboard" id="lbResult">
         <h3>🏆 파리 잡기 랭킹 (10점 이상)</h3>
+        <div class="lb-scope-toggle" data-target="lbResultList">
+          <button class="lb-scope-btn active" data-scope="weekly">📅 주간</button>
+          <button class="lb-scope-btn" data-scope="semester">🏫 학기</button>
+          <button class="lb-scope-btn" data-scope="all">🌟 전체</button>
+        </div>
+        <p class="lb-update-note">📅 주간: 매주 월요일 오전 9시 갱신 · 🏫 학기: 3월 1일 / 8월 1일 갱신</p>
+        <p class="lb-period-note" id="lbResultPeriodNote"></p>
         <ol id="lbResultList"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
     </div>
@@ -1073,15 +1096,27 @@
     });
   }
 
-  function renderLeaderboard(listEl){
+  // 리더보드마다(시작화면/결과화면) 독립적으로 현재 선택된 기간(주간/학기/전체)을 기억
+  const lbScopeState = {};
+
+  function renderLeaderboard(listEl, scope){
     if(!listEl) return;
+    scope = scope || lbScopeState[listEl.id] || 'weekly';
+    lbScopeState[listEl.id] = scope;
+    const noteEl = document.getElementById(listEl.id.replace('List', 'PeriodNote'));
     listEl.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
-    fetchTopScores('fly', 500).then(result=>{
+    fetchScores('fly', { scope, limit: 500 }).then(result=>{
       if(!result || !result.ok){
         listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
+        if(noteEl) noteEl.textContent = '';
         return;
       }
-      // leaderboard 컬렉션에 이미 이름별 1건(최고점수+횟수)만 저장돼 있음. 10점 이상만 표시
+      if(noteEl){
+        if(scope === 'weekly') noteEl.textContent = `📅 ${getWeekLabel(result.periodId || getWeekId())}`;
+        else if(scope === 'semester') noteEl.textContent = result.periodId ? `🏫 ${getSemesterLabel(result.periodId)}` : '진행 중인 학기가 설정되어 있지 않아요';
+        else noteEl.textContent = '🌟 역대 전체 기록';
+      }
+      // "게임+기간+이름"당 문서 1건(최고점수+횟수)만 저장돼 있음. 10점 이상만 표시
       const rows = (result.rows || []).filter(r => (Number(r.score)||0) >= 10);
       if(!rows || rows.length === 0){
         listEl.innerHTML = '<li class="lb-empty">아직 10점 이상 기록이 없어요.</li>';
@@ -1092,6 +1127,18 @@
       ).join('');
     });
   }
+
+  document.querySelectorAll('.lb-scope-toggle').forEach(group=>{
+    const listEl = document.getElementById(group.dataset.target);
+    group.querySelectorAll('.lb-scope-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        if(btn.classList.contains('active')) return;
+        group.querySelectorAll('.lb-scope-btn').forEach(b=>b.classList.remove('active'));
+        btn.classList.add('active');
+        renderLeaderboard(listEl, btn.dataset.scope);
+      });
+    });
+  });
 
   async function captureResult(){
     captureBtn.disabled = true;

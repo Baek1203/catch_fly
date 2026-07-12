@@ -158,6 +158,37 @@
   .lb-panel .lb-score{ font-family:'JetBrains Mono', monospace; color: var(--gold); }
   .lb-empty{ text-align:center; opacity:0.6; font-size:12.5px; padding:8px 0; }
 
+  .lb-tabs{
+    display:flex; justify-content:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;
+  }
+  .lb-tab{
+    font-family:'Gaegu', sans-serif; font-size:15px; color: var(--sub);
+    background: #12173650; border:1px solid var(--line); border-radius:999px;
+    padding:7px 18px; cursor:pointer; transition: all .15s ease;
+  }
+  .lb-tab.active{
+    color:#241a00; background: linear-gradient(135deg, var(--gold), #ffb84d);
+    border-color: transparent; font-weight:700;
+  }
+  .lb-update-note{
+    text-align:center; font-size:10.5px; color: var(--sub); opacity:0.75;
+    margin: 0 0 12px; line-height:1.6;
+  }
+  .lb-period-row{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    flex-wrap:wrap; margin-bottom:16px; min-height:24px;
+  }
+  .lb-period-label{
+    font-family:'JetBrains Mono', monospace; font-size:12px; color: var(--teal);
+    background: #12173650; border:1px solid var(--line); border-radius:999px; padding:4px 12px;
+  }
+  .lb-history select{
+    font-family:'Gaegu', sans-serif; font-size:13.5px; color: var(--cream);
+    background:#0d1230; border:1px solid var(--line); border-radius:8px;
+    padding:5px 10px; outline:none; cursor:pointer;
+  }
+  .lb-history select:focus{ border-color: var(--gold); }
+
   .setup-note{
     max-width:640px; margin: 30px auto 0; text-align:center;
     font-size:12px; color: var(--sub); line-height:1.7;
@@ -213,7 +244,19 @@
   </div>
 
   <div class="lb-section">
-    <h3 class="title">🏆 실시간 랭킹</h3>
+    <h3 class="title">🏆 랭킹</h3>
+    <div class="lb-tabs" id="lbTabs">
+      <button class="lb-tab active" data-scope="weekly">📅 주간 랭킹</button>
+      <button class="lb-tab" data-scope="semester">🏫 학기 랭킹</button>
+      <button class="lb-tab" data-scope="all">🌟 전체 랭킹</button>
+    </div>
+    <p class="lb-update-note">📅 주간 랭킹은 매주 월요일 오전 9시에 새로 시작돼요 · 🏫 학기 랭킹은 3월 1일 / 8월 1일에 새로 시작돼요</p>
+    <div class="lb-period-row">
+      <span class="lb-period-label" id="lbPeriodLabel"></span>
+      <div class="lb-history" id="lbHistory">
+        <select id="historySelect"></select>
+      </div>
+    </div>
     <div class="lb-grid">
       <div class="lb-panel">
         <h4>🪰 파리 잡기 (10점 이상)</h4>
@@ -318,10 +361,83 @@
     ).join('');
   }
 
-  // 파리 잡기: 10점 이상인 기록 전부 (동점자는 기록 횟수 많은 순)
-  fetchTopScores('fly', 500).then(res => renderRanked(lbFly, res, { minScore: 10 }));
-  // 별자리 원정대: 10,000점 이상인 기록 전부 (동점자는 기록 횟수 많은 순)
-  fetchTopScores('star', 5000).then(res => renderRanked(lbStar, res, { minScore: 10000 }));
+  /* ---------------- 주간 / 학기 / 전체 랭킹 탭 + 지난 기록 ---------------- */
+  const lbTabs = document.getElementById('lbTabs');
+  const lbPeriodLabel = document.getElementById('lbPeriodLabel');
+  const lbHistory = document.getElementById('lbHistory');
+  const historySelect = document.getElementById('historySelect');
+
+  // 실제 기록이 쌓이기 시작한 첫 주 / 첫 학기. 이보다 이전 기간은 '지난 기록' 목록에 표시하지 않음.
+  const EARLIEST_WEEK_ID = '2026-07-06';
+  const EARLIEST_SEMESTER_ID = '2026-1';
+  const _semesterIdKey = (id) => { const [y, t] = id.split('-').map(Number); return y * 10 + t; };
+
+  let currentScope = 'weekly';
+  let currentPeriodId = null; // null = 지금 진행 중인 기간(이번 주 / 이번 학기)
+
+  function refreshHistoryOptions(){
+    if(currentScope === 'all'){
+      lbHistory.style.display = 'none';
+      historySelect.innerHTML = '';
+      return;
+    }
+    lbHistory.style.display = '';
+    const items = currentScope === 'weekly'
+      ? listPastWeeks(260).filter(it => it.id >= EARLIEST_WEEK_ID)
+      : listPastSemesters(new Date(), 20).filter(it => _semesterIdKey(it.id) >= _semesterIdKey(EARLIEST_SEMESTER_ID));
+    const currentLabel = currentScope === 'weekly'
+      ? `이번 주 (${getWeekLabel(getWeekId())})`
+      : (getSemesterId() ? `이번 학기 (${getSemesterLabel(getSemesterId())})` : '진행 중인 학기 없음');
+    let html = `<option value="">${currentLabel}</option>`;
+    if(items.length === 0){
+      html += `<option value="" disabled>지난 기록 없음</option>`;
+    } else {
+      items.forEach(it => { html += `<option value="${it.id}">지난 기록 · ${it.label}</option>`; });
+    }
+    historySelect.innerHTML = html;
+    historySelect.value = '';
+  }
+
+  function updatePeriodLabel(res){
+    if(currentScope === 'all'){ lbPeriodLabel.textContent = '역대 전체 기록'; return; }
+    if(currentScope === 'weekly'){
+      const id = (res && res.periodId) || getWeekId();
+      lbPeriodLabel.textContent = `📅 ${getWeekLabel(id)}`;
+      return;
+    }
+    if(currentScope === 'semester'){
+      const id = (res && res.periodId);
+      lbPeriodLabel.textContent = id ? `🏫 ${getSemesterLabel(id)}` : '진행 중인 학기가 설정되어 있지 않아요';
+    }
+  }
+
+  function loadLeaderboards(){
+    lbFly.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
+    lbStar.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
+    const opts = { scope: currentScope, periodId: currentPeriodId };
+    fetchScores('fly', { ...opts, limit: 500 }).then(res => { renderRanked(lbFly, res, { minScore: 10 }); updatePeriodLabel(res); });
+    fetchScores('star', { ...opts, limit: 5000 }).then(res => renderRanked(lbStar, res, { minScore: 10000 }));
+  }
+
+  lbTabs.querySelectorAll('.lb-tab').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      if(btn.dataset.scope === currentScope) return;
+      lbTabs.querySelectorAll('.lb-tab').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentScope = btn.dataset.scope;
+      currentPeriodId = null;
+      refreshHistoryOptions();
+      loadLeaderboards();
+    });
+  });
+
+  historySelect.addEventListener('change', ()=>{
+    currentPeriodId = historySelect.value || null;
+    loadLeaderboards();
+  });
+
+  refreshHistoryOptions();
+  loadLeaderboards();
 
   if(!firebaseReady){
     setupNote.innerHTML = '⚙️ 아직 Firebase가 연결되지 않았어요. <code>firebase-shared.js</code> 파일 안의 <code>firebaseConfig</code> 값을 본인의 Firebase 프로젝트 설정으로 채워주면 점수 저장과 랭킹이 활성화됩니다.';
