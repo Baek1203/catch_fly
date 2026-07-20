@@ -89,9 +89,10 @@
 
   /* ---------- Game grid ---------- */
   .game-grid{
-    display:grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-bottom: 44px;
+    display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 22px; margin-bottom: 44px;
   }
-  @media (max-width: 760px){ .game-grid{ grid-template-columns: 1fr; } }
+  @media (max-width: 980px){ .game-grid{ grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 560px){ .game-grid{ grid-template-columns: 1fr; } }
 
   .game-card{
     border-radius: 18px; border: 1px solid var(--line); overflow:hidden;
@@ -111,6 +112,9 @@
   .card-preview.star{
     background: radial-gradient(circle at 30% 20%, #182055 0%, #0d1230 70%);
   }
+  .card-preview.zero{
+    background: radial-gradient(circle at 70% 25%, #1b3a5c 0%, #0a0e1f 70%);
+  }
   .card-preview .stars{ position:absolute; inset:0; }
   .card-preview .dot{ position:absolute; width:3px; height:3px; border-radius:50%; background:#fff; opacity:0.6; }
 
@@ -125,6 +129,7 @@
     border-radius:999px; padding:3px 10px; width:fit-content;
   }
   .card-body.star .tag{ color:#1a1300; background: var(--teal); }
+  .card-body.zero .tag{ color:#001a24; background: #4fd1ff; }
   .card-body p{ font-size:13px; color: var(--sub); line-height:1.6; margin:0; flex:1; }
   .play-btn{
     font-family:'Gaegu', sans-serif; font-size:17px; font-weight:700;
@@ -138,8 +143,9 @@
     font-family:'Gaegu', sans-serif; font-size:20px; color: var(--gold);
     text-align:center; margin: 0 0 18px;
   }
-  .lb-grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; }
-  @media (max-width:760px){ .lb-grid{ grid-template-columns:1fr; } }
+  .lb-grid{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; }
+  @media (max-width:980px){ .lb-grid{ grid-template-columns:1fr 1fr; } }
+  @media (max-width:560px){ .lb-grid{ grid-template-columns:1fr; } }
   .lb-panel{
     background:#12173650; border:1px solid var(--line); border-radius:14px; padding:16px 18px;
   }
@@ -241,6 +247,18 @@
         <button class="play-btn" data-target="game2.html">▶ 플레이하기</button>
       </div>
     </div>
+
+    <div class="game-card" data-target="game3.html">
+      <div class="card-preview zero">
+        <span>🚀🔢</span>
+      </div>
+      <div class="card-body zero">
+        <span class="tag">SUM TO ZERO / TEN</span>
+        <h2>제로섬 스페이스 미션</h2>
+        <p>드래그로 상자를 그려 숫자 크리스탈의 합이 0, 10, -10이 되도록 만드는 순발력 게임. 제한시간 안에 최대한 많이 모아보세요.</p>
+        <button class="play-btn" data-target="game3.html">▶ 플레이하기</button>
+      </div>
+    </div>
   </div>
 
   <div class="lb-section">
@@ -266,6 +284,10 @@
         <h4>✦ 별자리 원정대 (10,000점 이상)</h4>
         <ol id="lbStar"><li class="lb-empty">불러오는 중...</li></ol>
       </div>
+      <div class="lb-panel">
+        <h4>🚀 제로섬 스페이스 미션 (10점 이상)</h4>
+        <ol id="lbZero"><li class="lb-empty">불러오는 중...</li></ol>
+      </div>
     </div>
   </div>
 
@@ -281,6 +303,7 @@
   const nameHint = document.getElementById('nameHint');
   const lbFly = document.getElementById('lbFly');
   const lbStar = document.getElementById('lbStar');
+  const lbZero = document.getElementById('lbZero');
   const setupNote = document.getElementById('setupNote');
 
   // 배경 별 장식 (별자리 카드 프리뷰)
@@ -414,9 +437,11 @@
   function loadLeaderboards(){
     lbFly.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
     lbStar.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
+    lbZero.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
     const opts = { scope: currentScope, periodId: currentPeriodId };
     fetchScores('fly', { ...opts, limit: 500 }).then(res => { renderRanked(lbFly, res, { minScore: 10 }); updatePeriodLabel(res); });
     fetchScores('star', { ...opts, limit: 5000 }).then(res => renderRanked(lbStar, res, { minScore: 10000 }));
+    fetchScores('zero', { ...opts, limit: 500 }).then(res => renderRanked(lbZero, res, { minScore: 10 }));
   }
 
   lbTabs.querySelectorAll('.lb-tab').forEach(btn=>{

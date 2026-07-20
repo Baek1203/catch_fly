@@ -1,7 +1,18 @@
 /* =========================================================
    firebase-shared.js
-   세 페이지(index.html, game1.html, game2.html)가 공통으로
+   네 페이지(index.html, game1.html, game2.html, game3.html)가 공통으로
    사용하는 Firebase 설정 + 점수 저장/랭킹 불러오기 헬퍼입니다.
+
+   ▶ 게임별 데이터 구분 (gameId)
+   saveScore()/fetchScores()의 첫 번째 인자인 gameId로 게임마다 랭킹이
+   완전히 분리됩니다. 문서 ID에도 gameId가 포함되기 때문에(예:
+   `fly__민준`, `star__민준`, `zero__민준`) 같은 이름이어도 게임끼리
+   점수가 섞이지 않습니다.
+     - fly  : game1.html (파리 잡기 좌표게임)
+     - star : game2.html (별자리 원정대)
+     - zero : game3.html (제로섬 스페이스 미션)
+   새 게임을 추가할 때는 여기 목록과, 아래 Firestore 보안 규칙의
+   `game in [...]` 허용 목록에도 새 gameId를 추가해야 저장이 됩니다.
 
    ▶ 사용 전 꼭 해야 할 일
    1) https://console.firebase.google.com 에서 프로젝트를 만드세요.
@@ -45,14 +56,14 @@
        match /leaderboard/{entryId} {
          allow read: if true;
          allow write: if request.resource.data.name is string
-                       && request.resource.data.game in ['fly', 'star']
+                       && request.resource.data.game in ['fly', 'star', 'zero']
                        && request.resource.data.score is number
                        && request.resource.data.count is number;
        }
        match /leaderboard_weekly/{entryId} {
          allow read: if true;
          allow write: if request.resource.data.name is string
-                       && request.resource.data.game in ['fly', 'star']
+                       && request.resource.data.game in ['fly', 'star', 'zero']
                        && request.resource.data.period is string
                        && request.resource.data.score is number
                        && request.resource.data.count is number;
@@ -60,7 +71,7 @@
        match /leaderboard_semester/{entryId} {
          allow read: if true;
          allow write: if request.resource.data.name is string
-                       && request.resource.data.game in ['fly', 'star']
+                       && request.resource.data.game in ['fly', 'star', 'zero']
                        && request.resource.data.period is string
                        && request.resource.data.score is number
                        && request.resource.data.count is number;

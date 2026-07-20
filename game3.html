@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>제로섬 스페이스 미션</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Gaegu:wght@400;700&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-page:#0a0e1f;
+    --surface-1:#141a30;
+    --surface-2:#1a2140;
+    --text-primary:#f4f6ff;
+    --text-secondary:#a3acce;
+    --border:#2b3358;
+    --border-strong:#3d4870;
+    --border-accent:#4fd1ff;
+    --bg-accent:rgba(79,209,255,0.14);
+    --text-accent:#7fe3ff;
+    --chip-score-text:#9cd0ff; --chip-score-icon:#4fa8ff;
+    --chip-time-text:#ffb98c; --chip-time-icon:#ff8a4c;
+    --cell-pos-bg:#1b4b7a; --cell-pos-text:#ffffff; --cell-pos-border:#4a9ce0;
+    --cell-neg-bg:#7a2a2a; --cell-neg-text:#ffffff; --cell-neg-border:#dd6058;
+    --cell-zero-bg:#343b60; --cell-zero-text:#eef0fb; --cell-zero-border:#636ba0;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:var(--bg-page);
+    color:var(--text-primary);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;
+    display:flex;
+    justify-content:center;
+    padding:20px 12px 40px;
+    position:relative;
+    overflow-x:hidden;
+  }
+  .zsb-grid, .zsb-cell, .zsb-panel{
+    -webkit-user-select:none;
+    -moz-user-select:none;
+    -ms-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
+  }
+  #star-field{position:fixed;inset:0;overflow:hidden;z-index:0;pointer-events:none;}
+  .star{position:absolute;background:#fff;border-radius:50%;animation:twinkle ease-in-out infinite;}
+  @keyframes twinkle{0%,100%{opacity:.15;}50%{opacity:.95;}}
+
+  .zsb-wrap{position:relative;z-index:1;width:100%;max-width:1200px;display:flex;flex-direction:column;gap:10px;}
+
+  .zsb-header{display:flex;align-items:center;gap:12px;padding:2px 4px;}
+  .zsb-header .rocket-badge{
+    flex-shrink:0;width:40px;height:40px;border-radius:50%;
+    background:var(--surface-1);border:1px solid var(--border-strong);
+    display:flex;align-items:center;justify-content:center;color:var(--text-accent);
+  }
+  .zsb-header h1{margin:0;font-size:19px;font-weight:800;letter-spacing:.3px;color:var(--text-primary);}
+  .zsb-header p{margin:2px 0 0;font-size:12.5px;color:var(--text-secondary);}
+
+  .zsb-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+  .zsb-stat{display:flex;gap:8px;flex-wrap:wrap;}
+  .zsb-chip{
+    display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700;
+    padding:6px 12px;border-radius:999px;background:var(--surface-1);
+    border:1px solid var(--border);white-space:nowrap;
+  }
+  .zsb-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;animation:pulse 1.6s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.4;transform:scale(0.85);}50%{opacity:1;transform:scale(1.1);}}
+  .zsb-chip.score{color:var(--chip-score-text);}
+  .zsb-chip.score .zsb-dot{background:var(--chip-score-icon);}
+  .zsb-chip.time{color:var(--chip-time-text);}
+  .zsb-chip.time .zsb-dot{background:var(--chip-time-icon);}
+  .zsb-chip.target{color:var(--text-secondary);}
+  .zsb-chip.target .zsb-dot{background:var(--border-strong);animation:none;}
+
+  #zsb-restart{
+    display:flex;align-items:center;gap:6px;
+    border-radius:999px;font-weight:700;font-size:13px;
+    padding:8px 16px;background:var(--surface-1);border:1px solid var(--border-strong);
+    color:var(--text-accent);cursor:pointer;flex-shrink:0;
+  }
+  #zsb-restart:hover{background:var(--surface-2);}
+  #zsb-restart:active{transform:scale(0.97);}
+
+  .zsb-msgbar{min-height:20px;font-size:13px;font-weight:700;color:var(--text-accent);text-align:center;opacity:0;transition:opacity .25s;}
+  .zsb-msgbar.show{opacity:1;}
+
+  .zsb-panel{
+    position:relative;background:var(--surface-1);border-radius:16px;padding:14px;
+    border:1px solid var(--border);
+  }
+  .zsb-rivet{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--border-strong);}
+  .zsb-rivet.tl{top:8px;left:8px;} .zsb-rivet.tr{top:8px;right:8px;}
+  .zsb-rivet.bl{bottom:8px;left:8px;} .zsb-rivet.br{bottom:8px;right:8px;}
+
+  .zsb-grid{
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(17,1fr);
+    gap:clamp(3px,0.4vw,5px);
+    touch-action:none;
+  }
+  .zsb-cell{
+    aspect-ratio:1/1;
+    display:flex;align-items:center;justify-content:center;
+    border:1.5px solid var(--border);
+    border-radius:7px;
+    font-family:'Space Grotesk',-apple-system,BlinkMacSystemFont,sans-serif;
+    font-size:var(--cell-font, clamp(12px,1.9vw,18px));
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+    letter-spacing:-0.2px;
+    background:var(--surface-2);
+    color:var(--text-primary);
+  }
+  .zsb-cell.pos{background:var(--cell-pos-bg);color:var(--cell-pos-text);border-color:var(--cell-pos-border);}
+  .zsb-cell.neg{background:var(--cell-neg-bg);color:var(--cell-neg-text);border-color:var(--cell-neg-border);}
+  .zsb-cell.zero{background:var(--cell-zero-bg);color:var(--cell-zero-text);border-color:var(--cell-zero-border);}
+  .zsb-cell.cleared{background:transparent;border-color:transparent;color:transparent;}
+  .zsb-cell.sel{box-shadow:0 0 0 2px var(--border-accent) inset;border-color:var(--border-accent);}
+  .zsb-cell.pop{animation:zsb-pop .25s ease forwards;}
+  @keyframes zsb-pop{
+    0%{transform:scale(1);opacity:1;}
+    55%{transform:scale(1.35);opacity:1;}
+    100%{transform:scale(.2);opacity:0;}
+  }
+
+  .zsb-sel-box{position:absolute;pointer-events:none;border:2px solid var(--border-accent);background:var(--bg-accent);border-radius:6px;display:none;}
+  .zsb-bracket{position:absolute;width:12px;height:12px;pointer-events:none;display:none;}
+  .zsb-bracket.tl{border-top:2px solid var(--border-accent);border-left:2px solid var(--border-accent);}
+  .zsb-bracket.tr{border-top:2px solid var(--border-accent);border-right:2px solid var(--border-accent);}
+  .zsb-bracket.bl{border-bottom:2px solid var(--border-accent);border-left:2px solid var(--border-accent);}
+  .zsb-bracket.br{border-bottom:2px solid var(--border-accent);border-right:2px solid var(--border-accent);}
+
+  .zsb-overlay{position:fixed;inset:0;z-index:30;background:rgba(10,14,31,0.92);backdrop-filter:blur(2px);display:none;flex-direction:column;align-items:center;justify-content:flex-start;gap:8px;border-radius:0;border:none;}
+  .zsb-overlay.show{display:flex;}
+  .zsb-overlay-inner{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;gap:8px;margin:auto;padding:24px 6px;}
+  .zsb-hint{margin:2px 4px 0;text-align:center;}
+  .zsb-hint p{font-size:12.5px;color:var(--text-secondary);margin:2px 0;}
+
+  @media (max-width:480px){
+    body{padding:10px 6px 14px;}
+    .zsb-wrap{gap:6px;}
+    .zsb-header{gap:8px;padding:0 2px;}
+    .zsb-header .rocket-badge{width:32px;height:32px;}
+    .zsb-header h1{font-size:15px;}
+    .zsb-header p{display:none;}
+    .zsb-chip{padding:5px 9px;font-size:11px;gap:5px;}
+    #zsb-restart{padding:6px 12px;font-size:11.5px;}
+    .zsb-panel{padding:8px;border-radius:12px;}
+    .zsb-hint p{font-size:11px;}
+  }
+  @media (max-height:640px){
+    .zsb-header p{display:none;}
+    body{padding-top:8px;padding-bottom:8px;}
+  }
+  body.is-playing .zsb-header{display:none;}
+  body.is-playing .zsb-chip.target{display:none;}
+  body.is-playing .zsb-hint{display:none;}
+  body.is-playing .zsb-wrap{gap:6px;}
+  body.is-playing .zsb-msgbar{min-height:16px;}
+  body.is-playing{padding-top:10px;padding-bottom:10px;}
+  body.is-playing .zsb-panel{padding:8px;}
+  body.is-playing .zsb-chip{padding:5px 10px;}
+  body.is-playing .zsb-top{gap:6px;}
+
+  /* ---------- Back bar (arcade hub 연동) ---------- */
+  .zsb-back-bar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 2px 2px; font-family:'Gaegu','Noto Sans KR',sans-serif;
+  }
+  .zsb-back-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    font-family:'Gaegu',sans-serif; font-size:15px; font-weight:700;
+    color: var(--text-primary); background: var(--surface-1);
+    border: 1px solid var(--border-strong); border-radius: 999px;
+    padding: 7px 14px; cursor:pointer; text-decoration:none;
+  }
+  .zsb-back-btn:hover{ background: var(--surface-2); }
+  .zsb-player-badge{ font-family:'Gaegu',sans-serif; font-size:14px; color: var(--text-accent); }
+  body.is-playing .zsb-back-bar{ display:none; }
+
+  /* ---------- Leaderboard (arcade hub와 동일한 데이터, 이 게임 전용) ---------- */
+  .zsb-leaderboard{
+    text-align:left; margin: 14px 0 2px; background: rgba(255,255,255,0.04);
+    border: 1px dashed var(--border-strong); border-radius: 10px; padding: 12px 14px;
+    font-family:'Noto Sans KR',sans-serif; max-width:420px; width:100%;
+  }
+  .zsb-leaderboard h3{
+    font-family:'Gaegu',sans-serif; font-size:16px; color: var(--text-accent);
+    margin: 0 0 8px; text-align:center;
+  }
+  .zsb-leaderboard ol{ list-style:none; margin:0; padding:0; font-size:13.5px; color: var(--text-primary); }
+  .zsb-leaderboard li{ display:flex; justify-content:space-between; padding: 4px 2px; border-bottom: 1px dashed var(--border); }
+  .zsb-leaderboard li:last-child{ border-bottom:none; }
+  .zsb-leaderboard .rank{ color: var(--chip-time-icon); font-weight:700; width:26px; }
+  .zsb-leaderboard .lb-name{ flex:1; text-align:left; padding-left:6px; }
+  .zsb-leaderboard .lb-score{ font-family:'JetBrains Mono', monospace; color: var(--text-accent); }
+  .zsb-leaderboard .lb-empty{ text-align:center; opacity:0.65; font-size:12.5px; padding: 6px 0; }
+  .zsb-lb-scope-toggle{ display:flex; justify-content:center; gap:6px; margin-bottom:8px; flex-wrap:wrap; }
+  .zsb-lb-scope-btn{
+    font-family:'Gaegu',sans-serif; font-size:12.5px; color: var(--text-primary);
+    background: var(--surface-2); border:1px solid var(--border-strong);
+    border-radius:999px; padding:3px 11px; cursor:pointer; opacity:0.75;
+  }
+  .zsb-lb-scope-btn.active{ background: var(--text-accent); color:#052029; opacity:1; font-weight:700; border-color:transparent; }
+  .zsb-lb-period-note{ text-align:center; font-family:'JetBrains Mono', monospace; font-size:11px; color: var(--chip-score-text); margin: 0 0 8px; opacity:0.9; }
+  .zsb-lb-update-note{ text-align:center; font-size:10px; color: var(--text-secondary); opacity:0.75; margin: 0 0 6px; line-height:1.5; }
+
+  .zsb-overlay{ overflow-y:auto; -webkit-overflow-scrolling:touch; padding:16px 10px; max-height: 100%; }
+</style>
+</head>
+<body>
+<div id="star-field"></div>
+<div class="zsb-wrap">
+
+  <div class="zsb-back-bar">
+    <a href="index.html" class="zsb-back-btn">⬅ 게임 선택으로</a>
+    <span class="zsb-player-badge" id="zsbPlayerBadge"></span>
+  </div>
+
+  <div class="zsb-header">
+    <div class="rocket-badge">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l-3 3 3 1 1 3 3-3"/><path d="M9 15c-3-6 2-12 8-13 1 6-4 11-8 13z"/><circle cx="14.5" cy="8.5" r="1.5"/></svg>
+    </div>
+    <div>
+      <h1>제로섬 스페이스 미션</h1>
+      <p>숫자 크리스탈을 모아 합이 0, 10, -10이 되도록 우주선 코어를 채우세요</p>
+    </div>
+  </div>
+
+  <div class="zsb-top">
+    <div class="zsb-stat">
+      <span class="zsb-chip score"><span class="zsb-dot"></span>에너지 <b id="zsb-score">0</b></span>
+      <span class="zsb-chip time"><span class="zsb-dot"></span><b id="zsb-time">120</b>초 남음</span>
+      <span class="zsb-chip target"><span class="zsb-dot"></span>목표 0 · 10 · -10</span>
+    </div>
+    <button id="zsb-restart">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l-3 3 3 1 1 3 3-3"/><path d="M9 15c-3-6 2-12 8-13 1 6-4 11-8 13z"/><circle cx="14.5" cy="8.5" r="1.5"/></svg>
+      미션 재출발
+    </button>
+  </div>
+
+  <div class="zsb-msgbar" id="zsb-msgbar"></div>
+
+  <div class="zsb-panel" id="zsb-panel">
+    <span class="zsb-rivet tl"></span><span class="zsb-rivet tr"></span>
+    <span class="zsb-rivet bl"></span><span class="zsb-rivet br"></span>
+    <div class="zsb-grid" id="zsb-grid"></div>
+    <div class="zsb-sel-box" id="zsb-selbox"></div>
+    <div class="zsb-bracket tl" id="zsb-bracket-tl"></div>
+    <div class="zsb-bracket tr" id="zsb-bracket-tr"></div>
+    <div class="zsb-bracket bl" id="zsb-bracket-bl"></div>
+    <div class="zsb-bracket br" id="zsb-bracket-br"></div>
+    <div class="zsb-overlay show" id="zsb-start-overlay">
+      <div class="zsb-overlay-inner">
+        <div class="rocket-badge" style="width:48px;height:48px;">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l-3 3 3 1 1 3 3-3"/><path d="M9 15c-3-6 2-12 8-13 1 6-4 11-8 13z"/><circle cx="14.5" cy="8.5" r="1.5"/></svg>
+        </div>
+        <p style="font-size:19px;font-weight:800;margin:6px 0 0;">제로섬 스페이스 미션</p>
+        <p style="font-size:13px;color:var(--text-secondary);margin:0;max-width:320px;text-align:center;">드래그로 상자를 그려 합이 0, 10, -10이 되도록 만들어보세요.</p>
+        <button id="zsb-start-btn" style="display:flex;align-items:center;gap:6px;border-radius:999px;font-weight:700;font-size:14px;padding:10px 20px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--text-accent);cursor:pointer;margin-top:4px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l-3 3 3 1 1 3 3-3"/><path d="M9 15c-3-6 2-12 8-13 1 6-4 11-8 13z"/><circle cx="14.5" cy="8.5" r="1.5"/></svg>
+          미션 시작
+        </button>
+
+        <div class="zsb-leaderboard" id="zsbLbStart">
+          <h3>🏆 제로섬 스페이스 랭킹 (10점 이상)</h3>
+          <div class="zsb-lb-scope-toggle" data-target="zsbLbStartList">
+            <button class="zsb-lb-scope-btn active" data-scope="weekly">📅 주간</button>
+            <button class="zsb-lb-scope-btn" data-scope="semester">🏫 학기</button>
+            <button class="zsb-lb-scope-btn" data-scope="all">🌟 전체</button>
+          </div>
+          <p class="zsb-lb-update-note">📅 주간: 매주 월요일 오전 9시 갱신 · 🏫 학기: 3월 1일 / 8월 1일 갱신</p>
+          <p class="zsb-lb-period-note" id="zsbLbStartPeriodNote"></p>
+          <ol id="zsbLbStartList"><li class="lb-empty">불러오는 중...</li></ol>
+        </div>
+      </div>
+    </div>
+    <div class="zsb-overlay" id="zsb-overlay">
+      <div class="zsb-overlay-inner">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--text-accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l-3 3 3 1 1 3 3-3"/><path d="M9 15c-3-6 2-12 8-13 1 6-4 11-8 13z"/><circle cx="14.5" cy="8.5" r="1.5"/></svg>
+        <p style="font-size:19px;font-weight:800;margin:0;">미션 종료</p>
+        <p style="font-size:14px;color:var(--text-secondary);margin:0;">획득한 에너지: <b id="zsb-final" style="color:var(--text-primary)"></b></p>
+        <button id="zsb-overlay-restart" style="display:flex;align-items:center;gap:6px;border-radius:999px;font-weight:700;font-size:13px;padding:8px 16px;background:var(--surface-2);border:1px solid var(--border-strong);color:var(--text-accent);cursor:pointer;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 15l-3 3 3 1 1 3 3-3"/><path d="M9 15c-3-6 2-12 8-13 1 6-4 11-8 13z"/><circle cx="14.5" cy="8.5" r="1.5"/></svg>
+          미션 재출발
+        </button>
+
+        <div class="zsb-leaderboard" id="zsbLbResult">
+          <h3>🏆 제로섬 스페이스 랭킹 (10점 이상)</h3>
+          <div class="zsb-lb-scope-toggle" data-target="zsbLbResultList">
+            <button class="zsb-lb-scope-btn active" data-scope="weekly">📅 주간</button>
+            <button class="zsb-lb-scope-btn" data-scope="semester">🏫 학기</button>
+            <button class="zsb-lb-scope-btn" data-scope="all">🌟 전체</button>
+          </div>
+          <p class="zsb-lb-update-note">📅 주간: 매주 월요일 오전 9시 갱신 · 🏫 학기: 3월 1일 / 8월 1일 갱신</p>
+          <p class="zsb-lb-period-note" id="zsbLbResultPeriodNote"></p>
+          <ol id="zsbLbResultList"><li class="lb-empty">불러오는 중...</li></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="zsb-hint">
+    <p>드래그로 상자를 그려서 숫자 합이 0, 10, -10 중 하나가 되면 크리스탈이 사라져요.</p>
+    <p>파랑은 양수 에너지, 빨강은 음수, 남색은 0을 의미해요.</p>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-shared.js"></script>
+<script>
+(function(){
+  var ROWS=10, COLS=17, TIME_LIMIT=120;
+  var panel=document.getElementById('zsb-panel');
+  var grid=document.getElementById('zsb-grid');
+  var selbox=document.getElementById('zsb-selbox');
+  var brTl=document.getElementById('zsb-bracket-tl');
+  var brTr=document.getElementById('zsb-bracket-tr');
+  var brBl=document.getElementById('zsb-bracket-bl');
+  var brBr=document.getElementById('zsb-bracket-br');
+  var scoreEl=document.getElementById('zsb-score');
+  var timeEl=document.getElementById('zsb-time');
+  var overlay=document.getElementById('zsb-overlay');
+  var startOverlay=document.getElementById('zsb-start-overlay');
+  var finalEl=document.getElementById('zsb-final');
+  var msgbar=document.getElementById('zsb-msgbar');
+  var hint=document.querySelector('.zsb-hint');
+
+  var values=[], cells=[], score=0, timeLeft=TIME_LIMIT, timer=null;
+  var dragging=false, startR=0, startC=0, curR=0, curC=0, gameOver=false, started=false, msgTimer=null;
+  var playerName='';
+  var playerBadge=document.getElementById('zsbPlayerBadge');
+  var lbStartList=document.getElementById('zsbLbStartList');
+  var lbResultList=document.getElementById('zsbLbResultList');
+
+  var winMsgs=['나이스 착륙!','에너지 코어 획득!','완벽한 미션!','굿잡, 조종사!','최고의 항해!'];
+  var stuckMsgs=['새로운 에너지 코어 생성!','판이 새로 채워졌어요!','신호 재정렬 완료!'];
+
+  function createStars(){
+    var field=document.getElementById('star-field');
+    var frag=document.createDocumentFragment();
+    for(var i=0;i<90;i++){
+      var s=document.createElement('div');
+      s.className='star';
+      s.style.top=(Math.random()*100)+'%';
+      s.style.left=(Math.random()*100)+'%';
+      var size=(Math.random()*2+1).toFixed(1);
+      s.style.width=size+'px'; s.style.height=size+'px';
+      s.style.animationDuration=(2+Math.random()*3).toFixed(1)+'s';
+      s.style.animationDelay=(Math.random()*3).toFixed(1)+'s';
+      frag.appendChild(s);
+    }
+    field.appendChild(frag);
+  }
+
+  function randVal(){
+    var r=Math.random();
+    if(r<0.12) return 0;
+    var v=Math.floor(Math.random()*9)+1;
+    return Math.random()<0.5 ? v : -v;
+  }
+
+  function isBusy(r,c){
+    var cl=cells[r][c].classList;
+    return cl.contains('cleared') || cl.contains('pop');
+  }
+
+  function applyCellStyle(r,c){
+    var d=cells[r][c], v=values[r][c];
+    d.classList.remove('pos','neg','zero','cleared','pop');
+    d.textContent=v;
+    if(v<0) d.classList.add('neg');
+    else if(v===0) d.classList.add('zero');
+    else d.classList.add('pos');
+  }
+
+  function buildGrid(){
+    grid.innerHTML='';
+    values=[]; cells=[];
+    for(var r=0;r<ROWS;r++){
+      values.push([]); cells.push([]);
+      for(var c=0;c<COLS;c++){
+        values[r].push(randVal());
+        var d=document.createElement('div');
+        d.className='zsb-cell';
+        grid.appendChild(d);
+        cells[r].push(d);
+      }
+    }
+    for(var r=0;r<ROWS;r++) for(var c=0;c<COLS;c++) applyCellStyle(r,c);
+  }
+
+  function countRemaining(){
+    var n=0;
+    for(var r=0;r<ROWS;r++) for(var c=0;c<COLS;c++) if(!isBusy(r,c)) n++;
+    return n;
+  }
+
+  function hasValidMove(){
+    var sumP=[], cntP=[];
+    for(var r=0;r<=ROWS;r++){sumP.push(new Array(COLS+1).fill(0)); cntP.push(new Array(COLS+1).fill(0));}
+    for(var r=0;r<ROWS;r++){
+      for(var c=0;c<COLS;c++){
+        var busy=isBusy(r,c);
+        var v=busy?0:values[r][c];
+        var cnt=busy?0:1;
+        sumP[r+1][c+1]=sumP[r][c+1]+sumP[r+1][c]-sumP[r][c]+v;
+        cntP[r+1][c+1]=cntP[r][c+1]+cntP[r+1][c]-cntP[r][c]+cnt;
+      }
+    }
+    for(var r0=0;r0<ROWS;r0++) for(var r1=r0;r1<ROWS;r1++){
+      for(var c0=0;c0<COLS;c0++) for(var c1=c0;c1<COLS;c1++){
+        var s=sumP[r1+1][c1+1]-sumP[r0][c1+1]-sumP[r1+1][c0]+sumP[r0][c0];
+        var cnt=cntP[r1+1][c1+1]-cntP[r0][c1+1]-cntP[r1+1][c0]+cntP[r0][c0];
+        if(cnt>0 && (s===0||s===10||s===-10)) return true;
+      }
+    }
+    return false;
+  }
+
+  function reshuffleRemainingIfStuck(){
+    if(countRemaining()===0) return;
+    if(hasValidMove()) return;
+    var tries=0;
+    do{
+      for(var r=0;r<ROWS;r++) for(var c=0;c<COLS;c++){
+        if(!isBusy(r,c)){
+          values[r][c]=randVal();
+          applyCellStyle(r,c);
+        }
+      }
+      tries++;
+    } while(!hasValidMove() && tries<30);
+    showMsg(stuckMsgs[Math.floor(Math.random()*stuckMsgs.length)]);
+  }
+
+  function showMsg(msg){
+    msgbar.textContent=msg;
+    msgbar.classList.add('show');
+    if(msgTimer) clearTimeout(msgTimer);
+    msgTimer=setTimeout(function(){msgbar.classList.remove('show');},1300);
+  }
+
+  function cellFromPoint(clientX, clientY){
+    var rect=grid.getBoundingClientRect();
+    var x=clientX-rect.left, y=clientY-rect.top;
+    var c=Math.floor((x/rect.width)*COLS);
+    var r=Math.floor((y/rect.height)*ROWS);
+    r=Math.max(0,Math.min(ROWS-1,r));
+    c=Math.max(0,Math.min(COLS-1,c));
+    return [r,c];
+  }
+
+  function updateSelectionVisual(){
+    var r0=Math.min(startR,curR), r1=Math.max(startR,curR);
+    var c0=Math.min(startC,curC), c1=Math.max(startC,curC);
+    for(var r=0;r<ROWS;r++) for(var c=0;c<COLS;c++){
+      var inBox=r>=r0&&r<=r1&&c>=c0&&c<=c1;
+      var cell=cells[r][c];
+      if(isBusy(r,c)) continue;
+      cell.classList.toggle('sel', inBox);
+    }
+
+    var panelRect=panel.getBoundingClientRect();
+    var firstRect=cells[r0][c0].getBoundingClientRect();
+    var lastRect=cells[r1][c1].getBoundingClientRect();
+    var left=firstRect.left-panelRect.left;
+    var top=firstRect.top-panelRect.top;
+    var w=lastRect.right-firstRect.left;
+    var h=lastRect.bottom-firstRect.top;
+
+    selbox.style.display='block';
+    selbox.style.left=left+'px';
+    selbox.style.top=top+'px';
+    selbox.style.width=w+'px';
+    selbox.style.height=h+'px';
+
+    [brTl,brTr,brBl,brBr].forEach(function(b){ b.style.display='block'; });
+    brTl.style.left=(left-2)+'px'; brTl.style.top=(top-2)+'px';
+    brTr.style.left=(left+w-10)+'px'; brTr.style.top=(top-2)+'px';
+    brBl.style.left=(left-2)+'px'; brBl.style.top=(top+h-10)+'px';
+    brBr.style.left=(left+w-10)+'px'; brBr.style.top=(top+h-10)+'px';
+  }
+
+  function clearSelectionVisual(){
+    for(var r=0;r<ROWS;r++) for(var c=0;c<COLS;c++) cells[r][c].classList.remove('sel');
+    selbox.style.display='none';
+    [brTl,brTr,brBl,brBr].forEach(function(b){ b.style.display='none'; });
+  }
+
+  function finishSelection(){
+    var r0=Math.min(startR,curR), r1=Math.max(startR,curR);
+    var c0=Math.min(startC,curC), c1=Math.max(startC,curC);
+    var sum=0, count=0, list=[];
+    for(var r=r0;r<=r1;r++) for(var c=c0;c<=c1;c++){
+      if(isBusy(r,c)) continue;
+      sum+=values[r][c]; count++; list.push([r,c]);
+    }
+    clearSelectionVisual();
+    if(count>0 && (sum===0||sum===10||sum===-10)){
+      list.forEach(function(rc){ cells[rc[0]][rc[1]].classList.add('pop'); });
+      score+=count;
+      scoreEl.textContent=score;
+      showMsg(winMsgs[Math.floor(Math.random()*winMsgs.length)]);
+      setTimeout(function(){
+        list.forEach(function(rc){
+          var cell=cells[rc[0]][rc[1]];
+          cell.classList.remove('pop');
+          cell.classList.add('cleared');
+          cell.textContent='';
+        });
+        reshuffleRemainingIfStuck();
+      },250);
+    }
+  }
+
+  grid.addEventListener('pointerdown', function(e){
+    if(gameOver || !started) return;
+    e.preventDefault();
+    dragging=true;
+    grid.setPointerCapture(e.pointerId);
+    var rc=cellFromPoint(e.clientX,e.clientY);
+    startR=curR=rc[0]; startC=curC=rc[1];
+    updateSelectionVisual();
+  });
+  grid.addEventListener('pointermove', function(e){
+    if(!dragging||gameOver) return;
+    e.preventDefault();
+    var rc=cellFromPoint(e.clientX,e.clientY);
+    curR=rc[0]; curC=rc[1];
+    updateSelectionVisual();
+  });
+  document.addEventListener('selectstart', function(e){
+    if(dragging) e.preventDefault();
+  });
+  grid.addEventListener('pointerup', function(e){
+    if(!dragging||gameOver) return;
+    dragging=false;
+    finishSelection();
+  });
+  grid.addEventListener('pointercancel', function(){ dragging=false; clearSelectionVisual(); });
+
+  window.addEventListener('resize', function(){
+    if(dragging) updateSelectionVisual();
+  });
+
+  function tick(){
+    timeLeft--;
+    timeEl.textContent=timeLeft;
+    if(timeLeft<=0){
+      clearInterval(timer);
+      gameOver=true;
+      document.body.classList.remove('is-playing');
+      fitGrid();
+      finalEl.textContent=score;
+      overlay.classList.add('show');
+      saveScore('zero', playerName, score, {}).then(function(){
+        renderLeaderboard(lbResultList);
+      });
+    }
+  }
+
+  /* ---------------- 랭킹 (제로섬 스페이스 미션 전용, gameId: 'zero') ---------------- */
+  var lbScopeState={};
+
+  function renderLeaderboard(listEl, scope){
+    if(!listEl) return;
+    scope = scope || lbScopeState[listEl.id] || 'weekly';
+    lbScopeState[listEl.id] = scope;
+    var noteEl = document.getElementById(listEl.id.replace('List', 'PeriodNote'));
+    listEl.innerHTML = '<li class="lb-empty">불러오는 중...</li>';
+    fetchScores('zero', { scope: scope, limit: 500 }).then(function(result){
+      if(!result || !result.ok){
+        listEl.innerHTML = '<li class="lb-empty">랭킹을 불러오지 못했어요. (F12 콘솔을 확인해보세요)</li>';
+        if(noteEl) noteEl.textContent = '';
+        return;
+      }
+      if(noteEl){
+        if(scope === 'weekly') noteEl.textContent = '📅 ' + getWeekLabel(result.periodId || getWeekId());
+        else if(scope === 'semester') noteEl.textContent = result.periodId ? '🏫 ' + getSemesterLabel(result.periodId) : '진행 중인 학기가 설정되어 있지 않아요';
+        else noteEl.textContent = '🌟 역대 전체 기록';
+      }
+      // "게임+기간+이름"당 문서 1건(최고점수+횟수)만 저장돼 있음. 10점 이상만 표시
+      var rows = (result.rows || []).filter(function(r){ return (Number(r.score)||0) >= 10; });
+      if(!rows || rows.length === 0){
+        listEl.innerHTML = '<li class="lb-empty">아직 10점 이상 기록이 없어요.</li>';
+        return;
+      }
+      listEl.innerHTML = assignRanks(rows).map(function(item){
+        var r=item.row, rank=item.rank;
+        return '<li><span class="rank">'+rank+'</span><span class="lb-name">'+(r.name||'익명')+'</span><span class="lb-score">'+r.score+'점</span></li>';
+      }).join('');
+    });
+  }
+
+  document.querySelectorAll('.zsb-lb-scope-toggle').forEach(function(group){
+    var listEl = document.getElementById(group.dataset.target);
+    group.querySelectorAll('.zsb-lb-scope-btn').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        if(btn.classList.contains('active')) return;
+        group.querySelectorAll('.zsb-lb-scope-btn').forEach(function(b){ b.classList.remove('active'); });
+        btn.classList.add('active');
+        renderLeaderboard(listEl, btn.dataset.scope);
+      });
+    });
+  });
+
+  function startGame(){
+    score=0; timeLeft=TIME_LIMIT; gameOver=false; started=true;
+    scoreEl.textContent=score; timeEl.textContent=timeLeft;
+    overlay.classList.remove('show');
+    startOverlay.classList.remove('show');
+    document.body.classList.add('is-playing');
+    buildGrid();
+    fitGrid();
+    reshuffleRemainingIfStuck();
+    msgbar.classList.remove('show');
+    clearSelectionVisual();
+    if(timer) clearInterval(timer);
+    timer=setInterval(tick,1000);
+  }
+
+  function fitGrid(){
+    var GAP=4;
+    var ps=getComputedStyle(panel);
+    var padX=parseFloat(ps.paddingLeft)+parseFloat(ps.paddingRight);
+    var padY=parseFloat(ps.paddingTop)+parseFloat(ps.paddingBottom);
+    var availW=panel.clientWidth-padX;
+    var panelTop=panel.getBoundingClientRect().top;
+    var hintH=hint?hint.getBoundingClientRect().height:0;
+    var bs=getComputedStyle(document.body);
+    var padBottom=parseFloat(bs.paddingBottom)||0;
+    var reserved=hintH+padBottom+18;
+    var availH=window.innerHeight-panelTop-reserved-padY;
+    var cellW=(availW-GAP*(COLS-1))/COLS;
+    var cellH=(availH-GAP*(ROWS-1))/ROWS;
+    var cs=Math.floor(Math.min(cellW,cellH));
+    cs=Math.max(cs,10);
+    grid.style.gridTemplateColumns='repeat('+COLS+','+cs+'px)';
+    grid.style.gridTemplateRows='repeat('+ROWS+','+cs+'px)';
+    grid.style.gap=GAP+'px';
+    var fs=Math.max(9,Math.min(18,cs*0.42));
+    grid.style.setProperty('--cell-font',fs.toFixed(1)+'px');
+  }
+
+  // 이름이 저장돼 있지 않으면 허브로 돌려보냄 (game1.html / game2.html과 동일한 규칙)
+  var storedName = getPlayerName();
+  if(!storedName){
+    location.href = 'index.html';
+    return;
+  }
+  playerName = storedName;
+  if(playerBadge) playerBadge.textContent = '🙋 ' + storedName;
+
+  createStars();
+  buildGrid();
+  reshuffleRemainingIfStuck();
+  fitGrid();
+  renderLeaderboard(lbStartList);
+
+  document.getElementById('zsb-restart').addEventListener('click', startGame);
+  document.getElementById('zsb-overlay-restart').addEventListener('click', startGame);
+  document.getElementById('zsb-start-btn').addEventListener('click', startGame);
+
+  var fitTimer=null;
+  window.addEventListener('resize', function(){
+    if(fitTimer) clearTimeout(fitTimer);
+    fitTimer=setTimeout(fitGrid,80);
+  });
+  window.addEventListener('orientationchange', function(){
+    setTimeout(fitGrid,150);
+  });
+})();
+</script>
+</body>
+</html>

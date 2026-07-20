@@ -4,17 +4,19 @@
 - `index.html` – 이름 입력 + 게임 선택 + 랭킹 미리보기 (첫 화면)
 - `game1.html` – 파리 잡기 좌표게임
 - `game2.html` – 별자리 원정대 (정비례/반비례)
-- `firebase-shared.js` – 세 페이지가 공통으로 쓰는 Firebase 설정 + 점수 저장/랭킹 조회 함수
+- `game3.html` – 제로섬 스페이스 미션 (합이 0·10·-10)
+- `firebase-shared.js` – 네 페이지가 공통으로 쓰는 Firebase 설정 + 점수 저장/랭킹 조회 함수
 - `migrate.html` – (관리자용, 선택) 기존 전체 랭킹 기록을 주간/학기 랭킹에 반영하는 1회성 도구
 
-5개 파일을 **같은 폴더**에 함께 두어야 합니다. (링크와 스크립트가 상대경로로 연결돼 있어요.)
+6개 파일을 **같은 폴더**에 함께 두어야 합니다. (링크와 스크립트가 상대경로로 연결돼 있어요.)
 
 ## 동작 방식
 1. `index.html`에서 이름을 입력하면 브라우저의 `localStorage`에 저장됩니다.
-2. 게임 카드를 클릭하면 `game1.html` / `game2.html`로 이동합니다.
+2. 게임 카드를 클릭하면 `game1.html` / `game2.html` / `game3.html`로 이동합니다.
 3. 각 게임 화면 왼쪽 위 **"⬅ 게임 선택으로"** 버튼을 누르면 언제든 `index.html`로 돌아갑니다.
 4. 게임이 끝나면 **주간 / 학기 / 전체** 세 랭킹이 동시에 저장/갱신됩니다 (아래 "랭킹 종류" 참고).
-5. 이름이 저장돼 있지 않은 상태로 `game1.html`/`game2.html`에 직접 들어오면 자동으로 `index.html`로 돌아갑니다.
+5. 이름이 저장돼 있지 않은 상태로 `game1.html`/`game2.html`/`game3.html`에 직접 들어오면 자동으로 `index.html`로 돌아갑니다.
+6. 각 게임의 랭킹은 게임별 `gameId`(`fly`/`star`/`zero`)로 완전히 분리되어 저장되므로, 같은 이름이라도 게임끼리 점수가 섞이지 않습니다.
 
 ## 랭킹 종류 (주간 / 학기 / 전체)
 너무 높은 전체 누적 점수만 보이면 의욕이 꺾이는 학생들이 있을 수 있어서, 랭킹을 세 단위로 나눴습니다.
@@ -35,13 +37,17 @@
 ## 데이터 구조 (읽기 사용량을 줄이기 위한 설계)
 플레이할 때마다 새 문서를 쌓지 않고, "게임+기간+이름"당 문서 1개만 유지합니다. 컬렉션은 3개로 나뉩니다.
 
-- `leaderboard` — 전체 랭킹. 문서 ID: `${game}__${이름}` (예: `fly__민준`)
+- `leaderboard` — 전체 랭킹. 문서 ID: `${game}__${이름}` (예: `fly__민준`, `zero__민준`)
 - `leaderboard_weekly` — 주간 랭킹. 문서 ID: `${game}__${주시작일}__${이름}` (예: `fly__2026-07-06__민준`)
 - `leaderboard_semester` — 학기 랭킹. 문서 ID: `${game}__${학기id}__${이름}` (예: `fly__2026-1__민준`)
 
 각 문서는 그 범위 안에서의 `score`(최고 점수), `count`(그 최고 점수를 기록한 횟수), 그 외 부가 통계(연속 기록, 명중률, 난이도 등)를 담고 있습니다.
-- 파리 잡기: 최고 점수(잡은 파리 수), 최고 연속 기록, 명중률
-- 별자리 원정대: 최고 총점, 그 기록을 세운 난이도
+- 파리 잡기 (`game`: `fly`): 최고 점수(잡은 파리 수), 최고 연속 기록, 명중률
+- 별자리 원정대 (`game`: `star`): 최고 총점, 그 기록을 세운 난이도
+- 제로섬 스페이스 미션 (`game`: `zero`): 최고 점수(제한시간 동안 지운 크리스탈 수)
+
+### 게임끼리 랭킹이 섞이지 않는 이유
+`saveScore(gameId, ...)` / `fetchScores(gameId, ...)`의 첫 번째 인자인 `gameId`(`fly` / `star` / `zero`)가 문서 ID와 저장되는 데이터 모두에 포함됩니다. 그래서 같은 사람이 세 게임을 모두 플레이해도 게임마다 별도의 문서(예: `fly__민준`, `star__민준`, `zero__민준`)에 각각 저장되고, 랭킹을 조회할 때도 `game == 'zero'`처럼 해당 게임만 걸러서 가져오기 때문에 점수가 절대 섞이지 않습니다. 새 게임을 추가할 때도 이 규칙(고유한 `gameId` 사용)만 지키면 자동으로 분리됩니다.
 
 ### 왜 "게임+기간+이름당 문서 1개"인가요? (읽기 사용량 절감)
 예전 버전은 플레이할 때마다 새 문서를 계속 추가했어요. 그러면 누군가 랭킹을 볼 때마다 "그동안 쌓인 모든 플레이 기록"을 전부 읽어와야 해서, 같은 사람이 여러 번 다시 할수록 읽기 사용량이 계속 늘어났습니다.
@@ -83,14 +89,14 @@ service cloud.firestore {
     match /leaderboard/{entryId} {
       allow read: if true;
       allow write: if request.resource.data.name is string
-                    && request.resource.data.game in ['fly', 'star']
+                    && request.resource.data.game in ['fly', 'star', 'zero']
                     && request.resource.data.score is number
                     && request.resource.data.count is number;
     }
     match /leaderboard_weekly/{entryId} {
       allow read: if true;
       allow write: if request.resource.data.name is string
-                    && request.resource.data.game in ['fly', 'star']
+                    && request.resource.data.game in ['fly', 'star', 'zero']
                     && request.resource.data.period is string
                     && request.resource.data.score is number
                     && request.resource.data.count is number;
@@ -98,7 +104,7 @@ service cloud.firestore {
     match /leaderboard_semester/{entryId} {
       allow read: if true;
       allow write: if request.resource.data.name is string
-                    && request.resource.data.game in ['fly', 'star']
+                    && request.resource.data.game in ['fly', 'star', 'zero']
                     && request.resource.data.period is string
                     && request.resource.data.score is number
                     && request.resource.data.count is number;
@@ -106,6 +112,11 @@ service cloud.firestore {
   }
 }
 ```
+
+> ⚠️ **이미 Firebase 프로젝트를 운영 중이셨다면 (game1/game2만 있었을 때부터 쓰고 계셨다면)**
+> Firestore 콘솔의 **규칙(Rules)** 탭에 저장된 보안 규칙에는 아직 `game in ['fly', 'star']`만 허용되어 있을 수 있습니다.
+> 이 상태로는 `game3.html`(제로섬 스페이스 미션)의 점수 저장이 "권한 없음" 오류로 실패합니다.
+> 위 예시처럼 규칙의 `game in [...]` 목록에 `'zero'`를 추가해서 다시 게시(Publish)해주셔야 game3의 랭킹이 정상 저장됩니다.
 
 ### 색인(인덱스) 관련 안내
 주간/학기 랭킹 조회는 `game`, `period` 두 필드에 대한 동등(`==`) 조건만 사용하고 정렬은 브라우저에서 처리합니다. Firestore는 동등 조건만 여러 개 조합하는 쿼리는 별도의 복합 색인 없이도 자동으로 처리하므로, 이번에도 색인 설정이 필요 없습니다.
